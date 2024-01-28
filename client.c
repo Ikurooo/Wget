@@ -16,76 +16,6 @@ typedef struct {
 } URI;
 
 /**
- * Takes a standard response and extracts the header as a dynamically allocated string.
- * @param response
- * @return a dynamically allocated string containing the header
- */
-char* extractHeader(char *response) {
-
-    char* position = strstr(response, "\r\n\r\n");
-
-    if (position == NULL) {
-        return strdup("ERROR MISSING HEADER");
-    }
-
-    size_t length = position - response;
-    char* result = (char*)malloc(length + 1);
-    strncpy(result, response, length);
-    result[length] = '\0';
-
-    return result;
-
-}
-
-/**
- * Takes a standard response and extracts the content as a dynamically allocated string.
- * @param response
- * @return a dynamically allocated string containing the content
- */
-char* extractContent(char *response) {
-    char* position = strstr(response, "\r\n\r\n");
-
-    if (position == NULL) {
-        return strdup("ERROR MISSING CONTENT");
-    }
-
-    size_t length = strlen(position + strlen("\r\n\r\n"));
-    char* result = (char*)malloc(length + 1);
-    strcpy(result, position + strlen("\r\n\r\n"));
-
-    return result;
-}
-
-/**
- * Receives a response from a server and packs all of it into a dynamically allocated string.
- * @param serverSocket the serverSocket
- * @return a dynamically allocated string with the entire response
- */
-static char* receiveResponse(int serverSocket) {
-    char *request = malloc(BUFFER_SIZE);
-    char buffer[BUFFER_SIZE];
-
-    size_t bytesRead = bytesRead = recv(serverSocket, request, sizeof(request) - 1, 0);
-    size_t totalBytesRead = bytesRead;
-
-    while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer) - 1, 0)) > 0) {
-        buffer[bytesRead] = '\0';
-        totalBytesRead += bytesRead;
-
-        char *temp = realloc(request, totalBytesRead);
-        if (temp == NULL) {
-            free(request);
-            return strdup("FAILED TO RECEIVE CONTENT FROM SERVER");
-        }
-        request = temp;
-        strcat(request, buffer);
-    }
-
-    return request;
-}
-
-
-/**
  * @brief Print a usage message to stderr and exit the process with EXIT_FAILURE.
  * @param process The name of the current process.
  */
@@ -193,6 +123,75 @@ static int validateDir(char **dir, URI uri) {
  */
 static int validateFile(char *file) {
     return (strspn(file, "/\\:*?\"<>|") != 0 || strlen(file) > 255) ? -1 : 0;
+}
+
+/**
+ * Takes a standard response and extracts the header as a dynamically allocated string.
+ * @param response
+ * @return a dynamically allocated string containing the header
+ */
+char* extractHeader(char *response) {
+
+    char* position = strstr(response, "\r\n\r\n");
+
+    if (position == NULL) {
+        return strdup("ERROR MISSING HEADER");
+    }
+
+    size_t length = position - response;
+    char* result = (char*)malloc(length + 1);
+    strncpy(result, response, length);
+    result[length] = '\0';
+
+    return result;
+
+}
+
+/**
+ * Takes a standard response and extracts the content as a dynamically allocated string.
+ * @param response
+ * @return a dynamically allocated string containing the content
+ */
+char* extractContent(char *response) {
+    char* position = strstr(response, "\r\n\r\n");
+
+    if (position == NULL) {
+        return strdup("ERROR MISSING CONTENT");
+    }
+
+    size_t length = strlen(position + strlen("\r\n\r\n"));
+    char* result = (char*)malloc(length + 1);
+    strcpy(result, position + strlen("\r\n\r\n"));
+
+    return result;
+}
+
+/**
+ * Receives a response from a server and packs all of it into a dynamically allocated string.
+ * @param serverSocket the serverSocket
+ * @return a dynamically allocated string with the entire response
+ */
+static char* receiveResponse(int serverSocket) {
+    char *request = malloc(BUFFER_SIZE);
+    char buffer[BUFFER_SIZE];
+
+    size_t bytesRead = bytesRead = recv(serverSocket, request, sizeof(request) - 1, 0);
+    size_t totalBytesRead = bytesRead;
+
+    while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer) - 1, 0)) > 0) {
+        buffer[bytesRead] = '\0';
+        totalBytesRead += bytesRead;
+
+        char *temp = realloc(request, totalBytesRead);
+        if (temp == NULL) {
+            free(request);
+            return strdup("FAILED TO RECEIVE CONTENT FROM SERVER");
+        }
+        request = temp;
+        strcat(request, buffer);
+    }
+
+    return request;
 }
 
 /**
