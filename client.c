@@ -15,7 +15,48 @@ typedef struct {
     int success;
 } URI;
 
-static char* receiveFile(int serverSocket) {
+/**
+ * Takes a standard response and extracts the header as a dynamically allocated string.
+ * @param response
+ * @return a dynamically allocated string containing the header
+ */
+char* extractHeader(char *response) {
+
+    char* position = strstr(response, "\r\n\r\n");
+
+    if (position == NULL) {
+        return strdup("ERROR MISSING HEADER");
+    }
+
+    size_t length = position - response;
+    char* result = (char*)malloc(length + 1);
+    strncpy(result, response, length);
+    result[length] = '\0';
+
+    return result;
+
+}
+
+/**
+ * Takes a standard response and extracts the content as a dynamically allocated string.
+ * @param response
+ * @return a dynamically allocated string containing the content
+ */
+char* extractContent(char *response) {
+    char* position = strstr(response, "\r\n\r\n");
+
+    if (position == NULL) {
+        return strdup("ERROR MISSING CONTENT");
+    }
+
+    size_t length = strlen(position + strlen("\r\n\r\n"));
+    char* result = (char*)malloc(length + 1);
+    strcpy(result, position + strlen("\r\n\r\n"));
+
+    return result;
+}
+
+static char* receiveResponse(int serverSocket) {
     char *request = malloc(BUFFER_SIZE);
     char buffer[BUFFER_SIZE];
 
@@ -35,7 +76,6 @@ static char* receiveFile(int serverSocket) {
         strcat(request, buffer);
     }
 
-    fprintf(stderr, "%s\n", request);
     return request;
 }
 
@@ -54,7 +94,7 @@ void usage(const char *process) {
  * @param url the URL you would like to parse
  * @return the uri itself, if the conversion was successful the uri.success value will be 0
  */
-URI parseUrl(const char *url) {
+static URI parseUrl(const char *url) {
 
     URI uri = {
             .file = NULL,
@@ -117,7 +157,7 @@ URI parseUrl(const char *url) {
  * @param dir the directory you would like to validate
  * @return 0 if successful -1 otherwise
  */
-int validateDir(char **dir, URI uri) {
+static int validateDir(char **dir, URI uri) {
     if (strpbrk(*dir, "/\\:*?\"<>|.") != NULL) {
         return -1;
     }
@@ -146,7 +186,7 @@ int validateDir(char **dir, URI uri) {
  * @param file the file you would like to validate
  * @return 0 if successful -1 otherwise
  */
-int validateFile(char *file) {
+static int validateFile(char *file) {
     return (strspn(file, "/\\:*?\"<>|") != 0 || strlen(file) > 255) ? -1 : 0;
 }
 
@@ -156,17 +196,32 @@ int validateFile(char *file) {
  * @param status the status
  * @return
  */
-int validateResponseCode(char *protocol, char *status) {
+static int validateResponse(char *response) {
+
+    fprintf(stderr, "%s\n", response);
+
+    char *protocol = strtok(response, " ");
+    char *status = strtok(NULL, " ");
+    char *misc = strtok(NULL, "\r\n");
+
+	if (protocol == NULL || status == NULL || misc == NULL) {
+		fprintf(stderr, "ERROR parsing first line of client socket as file.\n");
+		return 2;
+	}
+
     if (strncmp(protocol, "HTTP/1.1", 8) != 0) {
+    	fprintf(stderr, "%s %s\n", status, misc);
         return 2;
     }
 
     // Check if status contains only numeric characters
     if (strspn(status, "0123456789") != strlen(status)) {
+    	fprintf(stderr, "%s %s\n", status, misc);
         return 2;
     }
 
     if (strncmp(status, "200", 3) != 0) {
+    	fprintf(stderr, "%s %s\n", status, misc);
         return 3;
     }
 
@@ -290,32 +345,21 @@ int main(int argc, char *argv[]) {
     free(request);
     free(uri.host);
 
-    char *receivedFile = receiveFile(clientSocket);
+    char *receivedResponse = receiveResponse(clientSocket);
 
-    char *protocol = strtok(receivedFile, " ");
-    char *status = strtok(NULL, " ");
-    char *misc = strtok(NULL, "\r\n");
+    char *header = extractHeader(receivedResponse);
+    char *file = extractContent(receivedResponse);
 
-    char *file = strtok(receivedFile, "\r\n\r\n");
-
-    if (protocol == NULL || status == NULL || misc == NULL) {
+    int responseCode = validateResponse(header);
+    if (responseCode != 0) {
+        free(receivedResponse);
         free(uri.file);
-        close(clientSocket);
-        fprintf(stderr, "ERROR parsing first line of client socket as file.\n");
-        exit(2);
-    }
-
-    int response = validateResponseCode(protocol, status);
-    if (response != 0) {
-        free(receivedFile);
-        free(uri.file);
-        fprintf(stderr, "%s %s\n", status, misc);
-        exit(response);
+        exit(responseCode);
     }
 
     if (fileSet == true) {
         if (validateFile(path) == -1) {
-            free(receivedFile);
+            free(receivedResponse);
             free(uri.file);
             fprintf(stderr, "An error occurred while parsing the file.\n");
             exit(EXIT_FAILURE);
@@ -324,7 +368,7 @@ int main(int argc, char *argv[]) {
 
     if (dirSet == true) {
         if (validateDir(&path, uri) == -1) {
-            free(receivedFile);
+            free(receivedResponse);
             free(uri.file);
             fprintf(stderr, "An error occurred while parsing the directory.\n");
             exit(EXIT_FAILURE);
@@ -339,13 +383,17 @@ int main(int argc, char *argv[]) {
     }
 
     if (outfile == NULL)  {
-        free(receivedFile);
+        free(receivedResponse);
         close(clientSocket);
         fprintf(stderr, "ERROR opening output file\n");
         exit(EXIT_FAILURE);
     }
 
-    free(receivedFile);
+    if (fprintf(outfile, "%s\n", file) == -1) {
+        fprintf(stderr, "Failed saving content to file.\n");
+    }
+
+    free(receivedResponse);
     close(clientSocket);
     exit(EXIT_SUCCESS);
 }
