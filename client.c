@@ -56,6 +56,11 @@ char* extractContent(char *response) {
     return result;
 }
 
+/**
+ * Receives a response from a server and packs all of it into a dynamically allocated string.
+ * @param serverSocket the serverSocket
+ * @return a dynamically allocated string with the entire response
+ */
 static char* receiveResponse(int serverSocket) {
     char *request = malloc(BUFFER_SIZE);
     char buffer[BUFFER_SIZE];
@@ -353,7 +358,6 @@ int main(int argc, char *argv[]) {
     free(uri.host);
 
     char *receivedResponse = receiveResponse(clientSocket);
-
     char *header = extractHeader(receivedResponse);
     char *file = extractContent(receivedResponse);
 
