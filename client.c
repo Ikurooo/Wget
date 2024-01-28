@@ -194,37 +194,44 @@ static int validateFile(char *file) {
  * @brief Validates the response.
  * @param protocol the protocol
  * @param status the status
- * @return
+ * @return 0 if everything went successful
  */
 static int validateResponse(char *response) {
 
-    fprintf(stderr, "%s\n", response);
+    char *responseCopy = strdup(response);
 
-    char *protocol = strtok(response, " ");
+    fprintf(stderr, "%s\n", responseCopy);
+
+    char *protocol = strtok(responseCopy, " ");
     char *status = strtok(NULL, " ");
     char *misc = strtok(NULL, "\r\n");
 
 	if (protocol == NULL || status == NULL || misc == NULL) {
 		fprintf(stderr, "ERROR parsing first line of client socket as file.\n");
+        free(responseCopy);
 		return 2;
 	}
 
     if (strncmp(protocol, "HTTP/1.1", 8) != 0) {
     	fprintf(stderr, "%s %s\n", status, misc);
+        free(responseCopy);
         return 2;
     }
 
     // Check if status contains only numeric characters
     if (strspn(status, "0123456789") != strlen(status)) {
     	fprintf(stderr, "%s %s\n", status, misc);
+        free(responseCopy);
         return 2;
     }
 
     if (strncmp(status, "200", 3) != 0) {
     	fprintf(stderr, "%s %s\n", status, misc);
+        free(responseCopy);
         return 3;
     }
 
+    free(responseCopy);
     return 0;
 }
 
@@ -350,16 +357,19 @@ int main(int argc, char *argv[]) {
     char *header = extractHeader(receivedResponse);
     char *file = extractContent(receivedResponse);
 
+    free(receivedResponse);
+
     int responseCode = validateResponse(header);
+    free(header);
     if (responseCode != 0) {
-        free(receivedResponse);
+        free(file);
         free(uri.file);
         exit(responseCode);
     }
 
     if (fileSet == true) {
         if (validateFile(path) == -1) {
-            free(receivedResponse);
+            free(file);
             free(uri.file);
             fprintf(stderr, "An error occurred while parsing the file.\n");
             exit(EXIT_FAILURE);
@@ -368,7 +378,7 @@ int main(int argc, char *argv[]) {
 
     if (dirSet == true) {
         if (validateDir(&path, uri) == -1) {
-            free(receivedResponse);
+            free(file);
             free(uri.file);
             fprintf(stderr, "An error occurred while parsing the directory.\n");
             exit(EXIT_FAILURE);
@@ -383,7 +393,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (outfile == NULL)  {
-        free(receivedResponse);
+        free(file);
         close(clientSocket);
         fprintf(stderr, "ERROR opening output file\n");
         exit(EXIT_FAILURE);
@@ -393,7 +403,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Failed saving content to file.\n");
     }
 
-    free(receivedResponse);
+    free(file);
     close(clientSocket);
     exit(EXIT_SUCCESS);
 }
