@@ -7,11 +7,38 @@
 
 #include "util.h"
 
+#define BUFFER_SIZE 32
+
 typedef struct {
     char *file;
     char *host;
     int success;
 } URI;
+
+static char* receiveFile(int serverSocket) {
+    char *request = malloc(BUFFER_SIZE);
+    char buffer[BUFFER_SIZE];
+
+    size_t bytesRead = bytesRead = recv(serverSocket, request, sizeof(request) - 1, 0);
+    size_t totalBytesRead = bytesRead;
+
+    while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer) - 1, 0)) > 0) {
+        buffer[bytesRead] = '\0';
+        totalBytesRead += bytesRead;
+
+        char *temp = realloc(request, totalBytesRead);
+        if (temp == NULL) {
+            free(request);
+            return strdup("FAILED TO RECEIVE CONTENT FROM SERVER");
+        }
+        request = temp;
+        strcat(request, buffer);
+    }
+
+    fprintf(stderr, "%s\n", request);
+    return request;
+}
+
 
 /**
  * @brief Print a usage message to stderr and exit the process with EXIT_FAILURE.
@@ -30,28 +57,28 @@ void usage(const char *process) {
 URI parseUrl(const char *url) {
 
     URI uri = {
-        .file = NULL,
-        .host = NULL,
-        .success = -1
+            .file = NULL,
+            .host = NULL,
+            .success = -1
     };
 
-	int hostOffset = 0;
-	
+    int hostOffset = 0;
+
     if (strncasecmp(url, "http://", 7) == 0) {
         hostOffset = 7;
     }
-    
+
     if (strncasecmp(url, "https://", 8) == 0) {
         hostOffset = 8;
     }
-    
+
     if ((strlen(url) - hostOffset) == 0) {
         return uri;
     }
 
     char* s = strpbrk(url + hostOffset, ";/?:@=&");
-	int fileLength = -1;
-    
+    u_long fileLength = -1;
+
     if (s == NULL) {
         if (asprintf(&uri.file, "/") == -1) {
             return uri;
@@ -69,7 +96,6 @@ URI parseUrl(const char *url) {
         fileLength = strlen(uri.file);
     }
 
-	// strlen(uri.file is messing me up)
     if (asprintf(&uri.host, "%.*s", (int)(strlen(url) - hostOffset - fileLength), (url + hostOffset)) == -1) {
         free(uri.file);
         return uri;
@@ -111,7 +137,7 @@ int validateDir(char **dir, URI uri) {
     }
 
     *dir = tempDir;
-    
+
     return 0;
 }
 
@@ -121,7 +147,7 @@ int validateDir(char **dir, URI uri) {
  * @return 0 if successful -1 otherwise
  */
 int validateFile(char *file) {
-    return (strspn(file, "/\\:*?\"<>|") != 0 || strlen(file) > 255) ? -1 : 0; 
+    return (strspn(file, "/\\:*?\"<>|") != 0 || strlen(file) > 255) ? -1 : 0;
 }
 
 /**
@@ -264,28 +290,13 @@ int main(int argc, char *argv[]) {
     free(request);
     free(uri.host);
 
-    FILE *socketFile = fdopen(clientSocket, "r+");
+    char *receivedFile = receiveFile(clientSocket);
 
-    if (socketFile == NULL) {
-        free(uri.file);
-        close(clientSocket);
-        fprintf(stderr, "ERROR opening client socket as file.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    char *line = NULL;
-    size_t linelen = 0;
-
-    if (getline(&line, &linelen, socketFile) == -1) {
-        free(uri.file);
-        close(clientSocket);
-        fprintf(stderr, "ERROR parsing first line of client socket as file.\n");
-        exit(2);
-    }
-
-    char *protocol = strtok(line, " ");
+    char *protocol = strtok(receivedFile, " ");
     char *status = strtok(NULL, " ");
     char *misc = strtok(NULL, "\r\n");
+
+    char *file = strtok(receivedFile, "\r\n\r\n");
 
     if (protocol == NULL || status == NULL || misc == NULL) {
         free(uri.file);
@@ -296,6 +307,7 @@ int main(int argc, char *argv[]) {
 
     int response = validateResponseCode(protocol, status);
     if (response != 0) {
+        free(receivedFile);
         free(uri.file);
         fprintf(stderr, "%s %s\n", status, misc);
         exit(response);
@@ -303,6 +315,7 @@ int main(int argc, char *argv[]) {
 
     if (fileSet == true) {
         if (validateFile(path) == -1) {
+            free(receivedFile);
             free(uri.file);
             fprintf(stderr, "An error occurred while parsing the file.\n");
             exit(EXIT_FAILURE);
@@ -311,6 +324,7 @@ int main(int argc, char *argv[]) {
 
     if (dirSet == true) {
         if (validateDir(&path, uri) == -1) {
+            free(receivedFile);
             free(uri.file);
             fprintf(stderr, "An error occurred while parsing the directory.\n");
             exit(EXIT_FAILURE);
@@ -325,27 +339,13 @@ int main(int argc, char *argv[]) {
     }
 
     if (outfile == NULL)  {
-        free(line);
-        fclose(socketFile);
+        free(receivedFile);
         close(clientSocket);
         fprintf(stderr, "ERROR opening output file\n");
         exit(EXIT_FAILURE);
     }
 
-    while (getline(&line, &linelen, socketFile) != -1) {
-        if (strcmp(line, "\r\n") == 0) {
-            break;
-        }
-        fprintf(stderr, "%s", line);
-    }
-
-    while (getline(&line, &linelen, socketFile) != -1) {
-        fprintf(outfile, "%s", line);
-    }
-
-    free(line);
-    fflush(socketFile);
-    fclose(socketFile);
+    free(receivedFile);
     close(clientSocket);
     exit(EXIT_SUCCESS);
 }
