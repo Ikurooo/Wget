@@ -256,6 +256,7 @@ char* receiveResponse(int serverSocket) {
 
     size_t bytesRead = recv(serverSocket, request, sizeof(request) - 1, 0);
     size_t totalBytesRead = bytesRead;
+    request[bytesRead] = '\0';
 
     while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer) - 1, 0)) > 0) {
         buffer[bytesRead] = '\0';

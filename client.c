@@ -91,6 +91,10 @@ int main(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
+    // Decrement recursion level for next iteration or early exit if no
+    // recursion depth was specified to save on memory
+    recursionLevel -= 1;
+
     url = argv[optind];
     uri = parseUrl(url);
     if (uri.success == -1) {
