@@ -14,12 +14,6 @@ typedef struct {
     size_t capacity;
 } stringList;
 
-//stringList* createDynamicStringArray(void);
-//
-//void freeStringList(stringList* array);
-//
-//int pushUrl(stringList* array, const char* url);
-
 stringList* createDynamicStringArray(void) {
     stringList* array = malloc(sizeof(stringList));
     array->urls = NULL;
