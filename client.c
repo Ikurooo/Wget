@@ -6,7 +6,6 @@
  **/
 
 #include "util.h"
-#include "stringlist.h"
 
 // SYNOPSIS
 //       client [-p PORT] [ -o FILE | -d DIR ] URL
@@ -192,7 +191,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Failed saving content to file.\n");
     }
 
-    // TODO: implement link-finder here
+    stringList* urls = extractUrls(file);
+    for (int i = 0; i < urls->size; ++i) {
+        printf("%s\n", urls->urls[i]);
+    }
 
     free(file);
     close(clientSocket);
