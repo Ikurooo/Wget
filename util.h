@@ -16,9 +16,9 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define BUFFER_SIZE 32
-#define EXIT_RECURSION 0
-#define ERROR_RECURSION -1
+#define BUFFER_SIZE (32)
+#define EXIT_RECURSION (0)
+#define ERROR_RECURSION (-1)
 
 typedef struct {
     char *file;
@@ -82,6 +82,7 @@ URI parseUrl(const char *url) {
         fileLength = strlen(uri.file);
     }
 
+    // TODO: get rid of the casts for portability and stability
     if (asprintf(&uri.host, "%.*s", (int)(strlen(url) - hostOffset - fileLength), (url + hostOffset)) == -1) {
         free(uri.file);
         return uri;
@@ -97,6 +98,15 @@ URI parseUrl(const char *url) {
     return uri;
 }
 
+char*** extractUrls(char *plainText) {
+
+}
+
+/**
+ * Converts a string to an integer - extracts the recursion level
+ * @param recursionLevelString
+ * @return the recursion level on success else ERROR_RECURSION
+ */
 long parseRecursionLevel(char *recursionLevelString) {
     errno = 0;
     char *endptr;
@@ -104,7 +114,7 @@ long parseRecursionLevel(char *recursionLevelString) {
 
     if ((errno == ERANGE && (recursionLevelInt == LONG_MAX || recursionLevelInt == LONG_MIN)) ||
         endptr == recursionLevelString || *endptr != '\0' || recursionLevelInt < 0) {
-        return -1;
+        return ERROR_RECURSION;
     }
 
     return recursionLevelInt;
@@ -125,7 +135,7 @@ long parsePort(const char *portStr) {
         return -1;
     }
 
-    return (int)port;
+    return port;
 }
 
 /**

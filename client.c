@@ -6,6 +6,7 @@
  **/
 
 #include "util.h"
+#include "stringlist.h"
 
 // SYNOPSIS
 //       client [-p PORT] [ -o FILE | -d DIR ] URL
@@ -191,7 +192,12 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Failed saving content to file.\n");
     }
 
+    // TODO: implement link-finder here
+
     free(file);
     close(clientSocket);
+
+    // TODO: implement recursion here
+
     exit(EXIT_SUCCESS);
 }
