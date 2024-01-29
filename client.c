@@ -20,8 +20,8 @@
  * @return
  */
 int main(int argc, char *argv[]) {
-    int port = 80;
-    int recursionLevel = 0;
+    long port = 80;
+    long recursionLevel = 1; // EXIT_RECURSION = 0; ERROR_RECURSION = -1; if you don't want any recursion set it to one
     char *path = NULL;
     char *url = NULL;
     URI uri;
@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
     bool portSet = false;
     bool fileSet = false;
     bool dirSet = false;
+    bool recursionSet = false;
 
     int option;
     while ((option = getopt(argc, argv, "p:o:d:r:")) != -1) {
@@ -59,7 +60,11 @@ int main(int argc, char *argv[]) {
                 path = optarg;
                 break;
             case 'r':
-
+                if (recursionSet) {
+                    usage(argv[0]);
+                }
+                recursionSet = true;
+                recursionLevel = parseRecursionLevel(optarg);
                 break;
             case '?':
                 usage(argv[0]);
@@ -69,13 +74,21 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    int length = (int) log10(port) + 1;
+    // TODO: get rid of the casts for portability and stability
+    long length = (long)log10((double)port) + 1;
     char strPort[length + 1];
-    snprintf(strPort, sizeof(strPort), "%d", port);
+    snprintf(strPort, sizeof(strPort), "%ld", port);
 
     if (argc - optind != 1) {
         usage(argv[0]);
-        fprintf(stderr, "URL is missing.\n");
+    }
+
+    if (recursionLevel == ERROR_RECURSION) {
+        exit(EXIT_FAILURE);
+    }
+
+    if (recursionLevel == EXIT_RECURSION) {
+        exit(EXIT_SUCCESS);
     }
 
     url = argv[optind];
