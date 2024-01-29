@@ -15,6 +15,8 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <math.h>
+#include <regex.h>
+#include "stringlist.h"
 
 #define BUFFER_SIZE (32)
 #define EXIT_RECURSION (0)
@@ -98,8 +100,33 @@ URI parseUrl(const char *url) {
     return uri;
 }
 
-char*** extractUrls(char *plainText) {
+stringList* extractUrls(char *plainText) {
+    stringList *urls = createDynamicStringArray();
 
+    regex_t regex;
+    regmatch_t match;
+    const char* pattern = "https?://[a-zA-Z0-9./?=_-]+";  // Basic URL pattern
+
+    if (regcomp(&regex, pattern, REG_EXTENDED) != 0) {
+        fprintf(stderr, "Error compiling regex pattern\n");
+        return NULL;
+    }
+
+    while (regexec(&regex, plainText, 1, &match, 0) == 0) {
+        if (match.rm_so == -1) {
+            break;
+        }
+
+        char* url = strndup(plainText + match.rm_so, match.rm_eo - match.rm_so);
+        pushUrl(urls, url);
+
+        plainText += match.rm_eo;
+        free(url);
+    }
+
+    regfree(&regex);
+
+    return urls;
 }
 
 /**
