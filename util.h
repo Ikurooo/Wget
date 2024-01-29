@@ -100,7 +100,40 @@ URI parseUrl(const char *url) {
     return uri;
 }
 
-stringList* extractUrls(char *plainText) {
+stringList *extractAdditionalFileNames(char *plainText) {
+    stringList *additionalFileNames = createDynamicStringArray();
+
+    regex_t regex;
+    regmatch_t match;
+    const char* pattern = "\\b(?:[a-zA-Z0-9_-]+\\.(?:js|png|jpg|jpeg))\\b";     // Basic file name pattern
+
+    if (regcomp(&regex, pattern, REG_EXTENDED) != 0) {
+        fprintf(stderr, "Error compiling regex pattern\n");
+        return NULL;
+    }
+
+    while (regexec(&regex, plainText, 1, &match, 0) == 0) {
+        if (match.rm_so == -1) {
+            break;
+        }
+
+        char* fileName = strndup(plainText + match.rm_so, match.rm_eo - match.rm_so);
+        pushUrl(additionalFileNames, fileName);
+
+        plainText += match.rm_eo;
+        free(fileName);
+    }
+
+    regfree(&regex);
+
+    return additionalFileNames;
+}
+
+char *prepareArguments(void) {
+    return NULL;
+}
+
+stringList *extractUrls(char *plainText) {
     stringList *urls = createDynamicStringArray();
 
     regex_t regex;

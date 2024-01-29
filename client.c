@@ -195,15 +195,34 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Failed saving content to file.\n");
     }
 
-    stringList* urls = extractUrls(file);
-    for (int i = 0; i < urls->size; ++i) {
-        printf("%s\n", urls->urls[i]);
-    }
+    stringList *urls = extractUrls(file);
+    stringList *additionalFileNames = extractAdditionalFileNames(file);
 
     free(file);
     close(clientSocket);
 
-    // TODO: implement recursion here
+    for (int i = 0; i < additionalFileNames->size; ++i) {
+        pid_t process = fork();
+
+        if (process == 0) {
+            char *arguments = prepareArguments();
+
+            char *pathArgument = NULL;
+
+            if (dirSet) {
+                error = snprintf(pathArgument, strlen(path) + 4, "-p %s", path);
+            } else if (fileSet) {
+                error = snprintf(pathArgument, strlen() + 4, "-o %s", );
+            }
+
+            execlp(argv[0], argv[0], pathArgument, NULL);
+        } else {
+
+        }
+    }
+
+    freeStringList(urls);
+    freeStringList(additionalFileNames);
 
     exit(EXIT_SUCCESS);
 }
