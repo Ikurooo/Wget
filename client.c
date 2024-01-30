@@ -232,9 +232,6 @@ int main(int argc, char *argv[]) {
     free(file);
     close(clientSocket);
 
-    fprintf(stderr, "%s\n", portStr);
-
-    // TODO: remove debug lines
     for (int i = 0; i < additionalFileNames->size; ++i) {
         pid_t process = fork();
 
@@ -246,6 +243,7 @@ int main(int argc, char *argv[]) {
         } else {
             int worked = -1;
             wait(&worked);
+            free(arguments);
         }
     }
 
