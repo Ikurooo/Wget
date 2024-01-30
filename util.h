@@ -247,7 +247,6 @@ int validateFile(char *file) {
 
 /**
  * @brief Validates the provided directory and if it is valid and does not yet exist it gets created.
- * @implnote This function mutates the original string if it is deemed a valid directory!
  * @param dir the directory you would like to validate
  * @return 0 if successful -1 otherwise
  */
@@ -267,19 +266,28 @@ int createDir(char *dir) {
     return 0;
 }
 
+/**
+ * Concatenates a file to a directory string
+ * @implnote this function assumes that the directory does not have a / or any other special character at the end
+ * additionally it is assumed that the file name does not contain any special characters
+ * @param fileName the name o the file
+ * @param dirName the name of the EXISTING directory
+ * @return a "static" string consisting of the concatenated file and directory. Note that some IDEs will complain
+ * that "the address of the local variable 'path' may escape the function".
+ */
 char *catFileNameToDir(char *fileName, char *dirName) {
 
     if (fileName == NULL || dirName == NULL) {
         return NULL;
     }
 
-    // Calculate the size of the resulting path
     size_t pathSize = strlen(dirName) + strlen(fileName) + 2; // 1 for '/' and 1 for null terminator
 
-    char *path = (char *)malloc(pathSize);
-    if (path == NULL) {
+    if (pathSize <= 0) {
         return NULL;
     }
+
+    char path[pathSize];
 
     if (strncmp(fileName, "/", 1) == 0) {
         snprintf(path, pathSize, "%s/index.html", dirName);

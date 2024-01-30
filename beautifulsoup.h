@@ -64,10 +64,6 @@ stringList *extractPattern(char *plainText, const char* pattern) {
     return matchingPatterns;
 }
 
-char *prepareArguments(void) {
-    return NULL;
-}
-
 /**
  * Converts a string to an integer - extracts the recursion level
  * @param recursionLevelString
