@@ -66,37 +66,17 @@ stringList *extractPattern(char *plainText, const char* pattern) {
 /**
  * Converts a string to an integer
  * @param string
- * @return the parsed number in a u_long; -1 if failed
+ * @return the parsed number as a long integer; LONG_MAX and errno ERANGE if failed
  */
-u_long convertStringToUlong(char *string) {
+long convertStringToLong(char *string) {
     errno = 0;
     char *endptr;
-    u_long ulongInteger = strtoul(string, &endptr, 10);
+    long longInteger = strtol(string, &endptr, 10);
 
-    if ((errno == ERANGE && ulongInteger == ULONG_MAX) ||
+    if ((errno == ERANGE && (longInteger == LONG_MAX || longInteger == LONG_MIN)) ||
         endptr == string || *endptr != '\0') {
-        return ULONG_MAX;
+        return LONG_MAX;
     }
 
-    return ulongInteger;
+    return longInteger;
 }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-local-addr"
-/**
- * Converts an unsigned long to a string
- * @param longInteger
- * @return a "static" string containing the number; if failed returns NULL.
- * Note that some IDEs will complain that "the address of the local variable 'path' may escape the function".
- */
-char *convertUlongIntegerToString(u_long longInteger) {
-    // C rounds to zero
-    long length = (long) log10((double_t) longInteger) + 1;
-    char string[length + 1];
-    if (snprintf(string, sizeof(string), "%lu", longInteger) == -1) {
-        return NULL;
-    }
-
-    return string;
-}
-#pragma GCC diagnostic pop

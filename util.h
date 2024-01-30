@@ -54,7 +54,7 @@ long parsePort(const char *portStr) {
         return -1;
     }
 
-    return port;
+    return 0;
 }
 
 /**
@@ -91,8 +91,9 @@ char* extractContent(char *response) {
         return strdup("ERROR MISSING CONTENT");
     }
 
-    size_t length = strlen(position + strlen("\r\n\r\n"));
+    size_t length = strlen(response) - (position - response + strlen("\r\n\r\n"));
     char* result = (char*)malloc(length + 1);
+
     strcpy(result, position + strlen("\r\n\r\n"));
 
     return result;
@@ -107,15 +108,15 @@ char* receiveResponse(int serverSocket) {
     char *request = malloc(BUFFER_SIZE);
     char buffer[BUFFER_SIZE];
 
-    size_t bytesRead = recv(serverSocket, request, sizeof(request) - 1, 0);
+    size_t bytesRead = recv(serverSocket, request, BUFFER_SIZE - 1, 0);
     size_t totalBytesRead = bytesRead;
     request[bytesRead] = '\0';
 
-    while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer) - 1, 0)) > 0) {
+    while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE - 1, 0)) > 0) {
         buffer[bytesRead] = '\0';
         totalBytesRead += bytesRead;
 
-        char *temp = realloc(request, totalBytesRead);
+        char *temp = realloc(request, totalBytesRead + 1);
         if (temp == NULL) {
             free(request);
             return strdup("FAILED TO RECEIVE CONTENT FROM SERVER");
@@ -269,16 +270,13 @@ int createDir(char *dir) {
     return 0;
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-local-addr"
 /**
  * Concatenates a file to a directory string
  * @implnote this function assumes that the directory does not have a / or any other special character at the end
  * additionally it is assumed that the file name does not contain any special characters
  * @param fileName the name o the file
  * @param dirName the name of the EXISTING directory
- * @return a "static" string consisting of the concatenated file and directory. Note that some IDEs will complain
- * that "the address of the local variable 'path' may escape the function".
+ * @return a "static" string consisting of the concatenated file and directory.
  */
 char *catFileNameToDir(char *fileName, char *dirName) {
 
@@ -286,20 +284,32 @@ char *catFileNameToDir(char *fileName, char *dirName) {
         return NULL;
     }
 
-    size_t pathSize = strlen(dirName) + strlen(fileName) + 2; // 1 for '/' and 1 for null terminator
+    size_t dirNameLen = strlen(dirName);
+    size_t fileNameLen = strlen(fileName);
 
-    if (pathSize <= 0) {
+    // Calculate required size for path
+    size_t pathSize = dirNameLen + fileNameLen + 2; // 1 for '/' and 1 for null terminator
+
+    // Add extra space if fileName is just "/"
+    if (fileNameLen == 1 && fileName[0] == '/') {
+        pathSize += strlen("index.html");
+    }
+
+    char *path = malloc(pathSize * sizeof(char));
+
+    if (path == NULL) {
         return NULL;
     }
 
-    char path[pathSize];
-
-    if (strncmp(fileName, "/", 1) == 0) {
+    if (strcmp(fileName, "/") == 0) {
         snprintf(path, pathSize, "%s/index.html", dirName);
-    } else {
+    } else if (strncmp(fileName, "/", 1) == 0) {
         snprintf(path, pathSize, "%s%s", dirName, fileName);
+    } else {
+        snprintf(path, pathSize, "%s/%s", dirName, fileName);
     }
+
+    fprintf(stderr, "PATH:%s\n", path);
 
     return path;
 }
-#pragma GCC diagnostic pop

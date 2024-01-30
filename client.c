@@ -20,10 +20,10 @@
  * @return
  */
 int main(int argc, char *argv[]) {
-    u_long port = 80;
-    u_long recursionLevel = 1; // EXIT_RECURSION = 0; if you don't want any recursion set it to one <- default value
-    char *path = NULL;
+    long recursionLevel = 1; // EXIT_RECURSION = 0; if you don't want any recursion set it to one <- default value
+    char *portStr = "80";
     char *url = NULL;
+    char *path = NULL;
     URI uri;
 
     bool portSet = false;
@@ -39,8 +39,8 @@ int main(int argc, char *argv[]) {
                     usage(argv[0]);
                 }
                 portSet = true;
-                port = parsePort(optarg);
-                if (port == -1) {
+                portStr = optarg;
+                if (parsePort(portStr) == -1) {
                     fprintf(stderr, "An error occurred while parsing the port.\n");
                     exit(EXIT_FAILURE);
                 }
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
                     usage(argv[0]);
                 }
                 recursionSet = true;
-                recursionLevel = convertStringToUlong(optarg);
+                recursionLevel = convertStringToLong(optarg);
                 break;
             case '?':
                 usage(argv[0]);
@@ -73,8 +73,6 @@ int main(int argc, char *argv[]) {
                 assert(0);
         }
     }
-
-    char *portStr = convertUlongIntegerToString(port);
 
     if (argc - optind != 1) {
         usage(argv[0]);
@@ -119,8 +117,6 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    printf("%s %s", portStr, uri.host);
-
     for (record = results; record != NULL; record = record->ai_next) {
         clientSocket = socket(record->ai_family, record->ai_socktype, record->ai_protocol);
         if (clientSocket == -1) continue;
@@ -129,8 +125,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Failed connecting to server.\n");
         exit(EXIT_FAILURE);
     }
-
-    printf("does not get to here\n");
 
     freeaddrinfo(results);
 
@@ -146,7 +140,6 @@ int main(int argc, char *argv[]) {
     send(clientSocket, request, strlen(request), 0);
     free(request);
     free(uri.host);
-
 
     char *receivedResponse = receiveResponse(clientSocket);
     char *header = extractHeader(receivedResponse);
@@ -179,8 +172,8 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        char* fullPath = catFileNameToDir(path, uri.file);
-        free(uri.file);
+        char* fullPath = catFileNameToDir(uri.file, path);
+        path = fullPath;
 
         if (fullPath == NULL) {
             free(file);
@@ -189,8 +182,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(path, "w");
     free(uri.file);
+
+    FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(path, "w");
 
     if (outfile == NULL)  {
         free(file);
@@ -199,7 +193,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (fprintf(outfile, "%s\n", file) == -1) {
+    if (fprintf(outfile, "%s", file) == -1) {
         fprintf(stderr, "Failed saving content to file.\n");
         free(file);
         exit(EXIT_FAILURE);
