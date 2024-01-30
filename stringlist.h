@@ -59,5 +59,3 @@ int pushUrl(stringList* array, const char* url) {
 
     return 0;
 }
-
-

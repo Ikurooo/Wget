@@ -176,16 +176,17 @@ int main(int argc, char *argv[]) {
         }
 
         fullPath = catFileNameToDir(uri.file, path);
-        // TODO: error handling and free
 
         if (fullPath == NULL) {
             free(file);
+            free(uri.file);
             fprintf(stderr, "An error occurred while concatenating the directory.\n");
             exit(EXIT_FAILURE);
         }
     }
 
     FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(fullPath, "w");
+
     free(uri.file);
     free(fullPath);
 
