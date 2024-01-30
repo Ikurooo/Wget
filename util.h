@@ -20,7 +20,6 @@
 
 #define BUFFER_SIZE (32)
 #define EXIT_RECURSION (0)
-#define ERROR_RECURSION (-1)
 
 typedef struct {
     char *file;
@@ -266,6 +265,8 @@ int createDir(char *dir) {
     return 0;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-local-addr"
 /**
  * Concatenates a file to a directory string
  * @implnote this function assumes that the directory does not have a / or any other special character at the end
@@ -297,3 +298,4 @@ char *catFileNameToDir(char *fileName, char *dirName) {
 
     return path;
 }
+#pragma GCC diagnostic pop

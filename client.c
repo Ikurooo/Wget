@@ -20,8 +20,8 @@
  * @return
  */
 int main(int argc, char *argv[]) {
-    long port = 80;
-    long recursionLevel = 1; // EXIT_RECURSION = 0; ERROR_RECURSION = -1; if you don't want any recursion set it to one
+    u_long port = 80;
+    u_long recursionLevel = 1; // EXIT_RECURSION = 0; if you don't want any recursion set it to one <- default value
     char *path = NULL;
     char *url = NULL;
     URI uri;
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
                     usage(argv[0]);
                 }
                 recursionSet = true;
-                recursionLevel = parseStringToLong(optarg);
+                recursionLevel = convertStringToUlong(optarg);
                 break;
             case '?':
                 usage(argv[0]);
@@ -74,16 +74,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // TODO: get rid of the casts for portability and stability
-    long length = (long)log10((double)port) + 1;
-    char strPort[length + 1];
-    snprintf(strPort, sizeof(strPort), "%ld", port);
+    char *portStr = convertUlongIntegerToString(port);
 
     if (argc - optind != 1) {
         usage(argv[0]);
     }
 
-    if (recursionLevel == ERROR_RECURSION) {
+    if (errno == ERANGE && recursionLevel == ULONG_MAX) {
         exit(EXIT_FAILURE);
     }
 
@@ -115,7 +112,7 @@ int main(int argc, char *argv[]) {
     hints.ai_protocol = IPPROTO_TCP;
 
     int error;
-    if ((error = getaddrinfo(uri.host, strPort, &hints, &results)) != 0) {
+    if ((error = getaddrinfo(uri.host, portStr, &hints, &results)) != 0) {
         free(uri.host);
         free(uri.file);
         fprintf(stderr, "Failed getting address information. [%d]\n", error);
@@ -222,6 +219,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    // TODO: remove debug lines
     for (int i = 0; i < additionalFileNames->size; ++i) {
         printf("%s\n", additionalFileNames->urls[i]);
     }
