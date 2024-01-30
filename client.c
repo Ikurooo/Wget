@@ -119,6 +119,8 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    printf("%s %s", portStr, uri.host);
+
     for (record = results; record != NULL; record = record->ai_next) {
         clientSocket = socket(record->ai_family, record->ai_socktype, record->ai_protocol);
         if (clientSocket == -1) continue;
@@ -128,7 +130,10 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    printf("does not get to here\n");
+
     freeaddrinfo(results);
+
     if (record == NULL) {
         free(uri.host);
         free(uri.file);
@@ -141,6 +146,7 @@ int main(int argc, char *argv[]) {
     send(clientSocket, request, strlen(request), 0);
     free(request);
     free(uri.host);
+
 
     char *receivedResponse = receiveResponse(clientSocket);
     char *header = extractHeader(receivedResponse);
@@ -185,10 +191,6 @@ int main(int argc, char *argv[]) {
 
     FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(path, "w");
     free(uri.file);
-
-    if (dirSet == true) {
-        free(path);
-    }
 
     if (outfile == NULL)  {
         free(file);

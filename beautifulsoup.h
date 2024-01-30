@@ -7,10 +7,9 @@
 #include <stdbool.h>
 #include <regex.h>
 
-
 #include "stringlist.h"
 
-// "\\b(?:[a-zA-Z0-9_-]+\\.(?:js|png|jpg|jpeg))\\b";     // Basic file name pattern
+// "[a-zA-Z0-9_-]+\.(js|png|jpg|jpeg|css)";     // Basic file name pattern
 // "https?://[a-zA-Z0-9./?=_-]+";                       // Basic URL pattern
 
 /**
@@ -86,7 +85,7 @@ u_long convertStringToUlong(char *string) {
 #pragma GCC diagnostic ignored "-Wreturn-local-addr"
 /**
  * Converts an unsigned long to a string
- * @param recursionLevelString
+ * @param longInteger
  * @return a "static" string containing the number; if failed returns NULL.
  * Note that some IDEs will complain that "the address of the local variable 'path' may escape the function".
  */

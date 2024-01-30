@@ -120,8 +120,12 @@ char* receiveResponse(int serverSocket) {
             free(request);
             return strdup("FAILED TO RECEIVE CONTENT FROM SERVER");
         }
+
         request = temp;
-        strcat(request, buffer);
+        if (strcat(request, buffer) == NULL) {
+            free(request);
+            return strdup("CLIENT ERROR");
+        }
     }
 
     return request;
