@@ -155,6 +155,8 @@ int main(int argc, char *argv[]) {
         exit(responseCode);
     }
 
+    char *fullPath = NULL;
+
     if (fileSet == true) {
         if (validateFile(path) == -1) {
             free(file);
@@ -162,6 +164,7 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "An error occurred while parsing the file.\n");
             exit(EXIT_FAILURE);
         }
+        fullPath = strdup(path);
     }
 
     if (dirSet == true) {
@@ -172,8 +175,8 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        char* fullPath = catFileNameToDir(uri.file, path);
-        path = fullPath;
+        fullPath = catFileNameToDir(uri.file, path);
+        // TODO: error handling and free
 
         if (fullPath == NULL) {
             free(file);
@@ -182,9 +185,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(fullPath, "w");
     free(uri.file);
-
-    FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(path, "w");
+    free(fullPath);
 
     if (outfile == NULL)  {
         free(file);
