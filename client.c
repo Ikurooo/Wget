@@ -4,7 +4,9 @@
  * @date 07.01.2024
  * @brief A simple HTTP client in C
  **/
+#define _GNU_SOURCE
 
+#include <sys/wait.h>
 #include "util.h"
 
 // SYNOPSIS
@@ -111,8 +113,7 @@ int main(int argc, char *argv[]) {
 
     int error;
     if ((error = getaddrinfo(uri.host, portStr, &hints, &results)) != 0) {
-        free(uri.host);
-        free(uri.file);
+        freeUri(&uri);
         fprintf(stderr, "Failed getting address information. [%d]\n", error);
         exit(EXIT_FAILURE);
     }
@@ -129,8 +130,8 @@ int main(int argc, char *argv[]) {
     freeaddrinfo(results);
 
     if (record == NULL) {
-        free(uri.host);
-        free(uri.file);
+        freeUri(&uri);
+        close(clientSocket);
         fprintf(stderr, "Failed connecting to server.\n");
         exit(EXIT_FAILURE);
     }
@@ -139,7 +140,6 @@ int main(int argc, char *argv[]) {
     asprintf(&request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", uri.file, uri.host);
     send(clientSocket, request, strlen(request), 0);
     free(request);
-    free(uri.host);
 
     char *receivedResponse = receiveResponse(clientSocket);
     char *header = extractHeader(receivedResponse);
@@ -151,7 +151,8 @@ int main(int argc, char *argv[]) {
     free(header);
     if (responseCode != 0) {
         free(file);
-        free(uri.file);
+        freeUri(&uri);
+        close(clientSocket);
         exit(responseCode);
     }
 
@@ -160,7 +161,8 @@ int main(int argc, char *argv[]) {
     if (fileSet == true) {
         if (validateFile(path) == -1) {
             free(file);
-            free(uri.file);
+            freeUri(&uri);
+            close(clientSocket);
             fprintf(stderr, "An error occurred while parsing the file.\n");
             exit(EXIT_FAILURE);
         }
@@ -170,7 +172,8 @@ int main(int argc, char *argv[]) {
     if (dirSet == true) {
         if (createDir(path) == -1) {
             free(file);
-            free(uri.file);
+            freeUri(&uri);
+            close(clientSocket);
             fprintf(stderr, "An error occurred while creating the directory.\n");
             exit(EXIT_FAILURE);
         }
@@ -179,7 +182,8 @@ int main(int argc, char *argv[]) {
 
         if (fullPath == NULL) {
             free(file);
-            free(uri.file);
+            freeUri(&uri);
+            close(clientSocket);
             fprintf(stderr, "An error occurred while concatenating the directory.\n");
             exit(EXIT_FAILURE);
         }
@@ -187,45 +191,68 @@ int main(int argc, char *argv[]) {
 
     FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(fullPath, "w");
 
-    free(uri.file);
     free(fullPath);
 
     if (outfile == NULL)  {
         free(file);
+        freeUri(&uri);
         close(clientSocket);
         fprintf(stderr, "ERROR opening output file\n");
         exit(EXIT_FAILURE);
     }
 
     if (fprintf(outfile, "%s", file) == -1) {
-        fprintf(stderr, "Failed saving content to file.\n");
         free(file);
+        freeUri(&uri);
+        close(clientSocket);
+        fprintf(stderr, "Failed saving content to file.\n");
         exit(EXIT_FAILURE);
     }
 
     stringList *urls = extractPattern(file, "https?://[a-zA-Z0-9./?=_-]+");
 
     if (urls == NULL) {
-        fprintf(stderr, "An error occurred while extracting urls.\n");
         free(file);
+        freeUri(&uri);
+        close(clientSocket);
+        fprintf(stderr, "An error occurred while extracting urls.\n");
         exit(EXIT_FAILURE);
     }
 
     stringList *additionalFileNames = extractPattern(file, "[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)");
 
     if (additionalFileNames == NULL) {
-        fprintf(stderr, "An error occurred while extracting additional files.\n");
         free(file);
+        freeUri(&uri);
+        close(clientSocket);
+        fprintf(stderr, "An error occurred while extracting additional files.\n");
         exit(EXIT_FAILURE);
-    }
-
-    // TODO: remove debug lines
-    for (int i = 0; i < additionalFileNames->size; ++i) {
-        printf("%s\n", additionalFileNames->urls[i]);
     }
 
     free(file);
     close(clientSocket);
+
+    fprintf(stderr, "%s\n", portStr);
+
+    // TODO: remove debug lines
+    for (int i = 0; i < additionalFileNames->size; ++i) {
+        pid_t process = fork();
+
+        char* arguments = NULL;
+        asprintf(&arguments, "%s/%s", uri.host, additionalFileNames->urls[i]);
+
+//        size_t length = strlen(uri.host) + strlen(additionalFileNames->urls[i]) + 1 + 1;
+//        char *arguments = (char*) malloc(length);
+
+        if (process == 0) {
+            execlp(argv[0], argv[0], "-p", portStr, arguments, NULL);
+        } else {
+            int worked = -1;
+            wait(&worked);
+        }
+    }
+
+    freeUri(&uri);
 
 //    for (int i = 0; i < additionalFileNames->size; ++i) {
 //        pid_t process = fork();

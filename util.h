@@ -1,20 +1,19 @@
 #define _GNU_SOURCE
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <assert.h>
-#include <string.h>
+#include <ctype.h>
 #include <errno.h>
-#include <sys/socket.h>
 #include <netdb.h>
-#include <arpa/inet.h>
-#include <limits.h>
-#include <sys/stat.h>
-#include <signal.h>
-#include <time.h>
-#include <fcntl.h>
 #include <stdbool.h>
-#include <math.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <limits.h>
 
 #include "beautifulsoup.h"
 
@@ -26,6 +25,16 @@ typedef struct {
     char *host;
     int success;
 } URI;
+
+void freeUri(URI *uri) {
+    if (uri->file != NULL) {
+        free(uri->file);
+    }
+
+    if (uri->host != NULL) {
+        free(uri->host);
+    }
+}
 
 // TODO: clean up validateDir()
 // TODO: add recursion
