@@ -251,7 +251,7 @@ int validateFile(char *file) {
  * @param dir the directory you would like to validate
  * @return 0 if successful -1 otherwise
  */
-int createDir(char *dir, URI uri) {
+int createDir(char *dir) {
     if (strpbrk(dir, "/\\:*?\"<>|.") != NULL) {
         return -1;
     }

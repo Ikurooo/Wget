@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
                     usage(argv[0]);
                 }
                 recursionSet = true;
-                recursionLevel = parseRecursionLevel(optarg);
+                recursionLevel = parseStringToLong(optarg);
                 break;
             case '?':
                 usage(argv[0]);
@@ -169,10 +169,19 @@ int main(int argc, char *argv[]) {
     }
 
     if (dirSet == true) {
-        if (validateDir(&path, uri) == -1) {
+        if (createDir(path) == -1) {
             free(file);
             free(uri.file);
-            fprintf(stderr, "An error occurred while parsing the directory.\n");
+            fprintf(stderr, "An error occurred while creating the directory.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        char* fullPath = catFileNameToDir(path, uri.file);
+        free(uri.file);
+
+        if (fullPath == NULL) {
+            free(file);
+            fprintf(stderr, "An error occurred while concatenating the directory.\n");
             exit(EXIT_FAILURE);
         }
     }
@@ -205,36 +214,40 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    stringList *additionalFileNames = extractPattern(file, "\\b(?:[a-zA-Z0-9_-]+\\.(?:js|png|jpg|jpeg))\\b");
+    stringList *additionalFileNames = extractPattern(file, "[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)");
 
-    if (urls == NULL) {
+    if (additionalFileNames == NULL) {
         fprintf(stderr, "An error occurred while extracting additional files.\n");
         free(file);
         exit(EXIT_FAILURE);
     }
 
+    for (int i = 0; i < additionalFileNames->size; ++i) {
+        printf("%s\n", additionalFileNames->urls[i]);
+    }
+
     free(file);
     close(clientSocket);
 
-    for (int i = 0; i < additionalFileNames->size; ++i) {
-        pid_t process = fork();
-
-        if (process == 0) {
-            char *arguments = prepareArguments();
-
-            char *pathArgument = NULL;
-
-            if (dirSet) {
-                error = snprintf(pathArgument, strlen(path) + 4, "-p %s", path);
-            } else if (fileSet) {
-                error = snprintf(pathArgument, strlen() + 4, "-o %s", );
-            }
-
-            execlp(argv[0], argv[0], pathArgument, NULL);
-        } else {
-
-        }
-    }
+//    for (int i = 0; i < additionalFileNames->size; ++i) {
+//        pid_t process = fork();
+//
+//        if (process == 0) {
+//            char *arguments = prepareArguments();
+//
+//            char *pathArgument = NULL;
+//
+//            if (dirSet) {
+//                error = snprintf(pathArgument, strlen(path) + 4, "-p %s", path);
+//            } else if (fileSet) {
+//                error = snprintf(pathArgument, strlen() + 4, "-o %s", );
+//            }
+//
+//            execlp(argv[0], argv[0], pathArgument, NULL);
+//        } else {
+//
+//        }
+//    }
 
     freeStringList(urls);
     freeStringList(additionalFileNames);
