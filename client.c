@@ -241,9 +241,6 @@ int main(int argc, char *argv[]) {
         char* arguments = NULL;
         asprintf(&arguments, "%s/%s", uri.host, additionalFileNames->urls[i]);
 
-//        size_t length = strlen(uri.host) + strlen(additionalFileNames->urls[i]) + 1 + 1;
-//        char *arguments = (char*) malloc(length);
-
         if (process == 0) {
             execlp(argv[0], argv[0], "-p", portStr, arguments, NULL);
         } else {
@@ -253,26 +250,6 @@ int main(int argc, char *argv[]) {
     }
 
     freeUri(&uri);
-
-//    for (int i = 0; i < additionalFileNames->size; ++i) {
-//        pid_t process = fork();
-//
-//        if (process == 0) {
-//            char *arguments = prepareArguments();
-//
-//            char *pathArgument = NULL;
-//
-//            if (dirSet) {
-//                error = snprintf(pathArgument, strlen(path) + 4, "-p %s", path);
-//            } else if (fileSet) {
-//                error = snprintf(pathArgument, strlen() + 4, "-o %s", );
-//            }
-//
-//            execlp(argv[0], argv[0], pathArgument, NULL);
-//        } else {
-//
-//        }
-//    }
 
     freeStringList(urls);
     freeStringList(additionalFileNames);
