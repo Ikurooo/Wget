@@ -193,10 +193,25 @@ int main(int argc, char *argv[]) {
 
     if (fprintf(outfile, "%s\n", file) == -1) {
         fprintf(stderr, "Failed saving content to file.\n");
+        free(file);
+        exit(EXIT_FAILURE);
     }
 
-    stringList *urls = extractUrls(file);
-    stringList *additionalFileNames = extractAdditionalFileNames(file);
+    stringList *urls = extractPattern(file, "https?://[a-zA-Z0-9./?=_-]+");
+
+    if (urls == NULL) {
+        fprintf(stderr, "An error occurred while extracting urls.\n");
+        free(file);
+        exit(EXIT_FAILURE);
+    }
+
+    stringList *additionalFileNames = extractPattern(file, "\\b(?:[a-zA-Z0-9_-]+\\.(?:js|png|jpg|jpeg))\\b");
+
+    if (urls == NULL) {
+        fprintf(stderr, "An error occurred while extracting additional files.\n");
+        free(file);
+        exit(EXIT_FAILURE);
+    }
 
     free(file);
     close(clientSocket);
