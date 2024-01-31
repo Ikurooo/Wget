@@ -149,7 +149,12 @@ int main(int argc, char *argv[]) {
     free(receivedResponse);
 
     int responseCode = validateResponse(header);
+
+    // TODO: check for text/html text/css script/js for early exit
+    // TODO: implement gzip and .bin .png .jpeg etc. writable
+
     free(header);
+
     if (responseCode != 0) {
         free(file);
         freeUri(&uri);
@@ -234,13 +239,19 @@ int main(int argc, char *argv[]) {
     free(file);
     close(clientSocket);
 
+    // TODO: make readable and remove magic values
+
     for (int i = 0; i < additionalFileNames->size; ++i) {
         fprintf(stderr, "ADDITIONAL FILE: %s\n", additionalFileNames->urls[i]);
 
         char *additionalRequest = NULL;
-        asprintf(&additionalRequest, "%s/%s", uri.host, additionalFileNames->urls[i]);
+        asprintf(&additionalRequest, "%s/%s", uri.host, additionalFileNames->urls[i] + 1);
+        additionalRequest[strlen(additionalRequest) - 1] = '\0';
+        // hacky way for now but move pointer by one char since we know because
+        // of the regex that every additional file is enclosed in quotes
 
         char *dArgument = (dirSet == true) ? path : "extra-files-needed-by-site";
+        // TODO: implement function to get current working directory
 
         char *arguments[10];
         int j = 0;
@@ -251,10 +262,11 @@ int main(int argc, char *argv[]) {
         arguments[j++] = "-d";
         arguments[j++] = dArgument;
         arguments[j++] = additionalRequest;
-        arguments[j++] = NULL;  // Mark the end of the argument list
+        arguments[j] = NULL;  // Mark the end of the argument list
 
         pid_t process = fork();
 
+        // TODO: make multi-threaded with sync through unnamed semaphores
         if (process == 0) {
             execvp(arguments[0], arguments);
         } else {
