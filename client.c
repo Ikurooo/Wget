@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    stringList *additionalFileNames = extractPattern(file, "[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*");
+    stringList *additionalFileNames = extractPattern(file, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
 
     if (additionalFileNames == NULL) {
         free(file);

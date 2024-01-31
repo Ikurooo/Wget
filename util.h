@@ -17,7 +17,7 @@
 
 #include "beautifulsoup.h"
 
-#define BUFFER_SIZE (32)
+#define BUFFER_SIZE (2048)
 #define EXIT_RECURSION (0)
 
 typedef struct {
@@ -35,9 +35,6 @@ void freeUri(URI *uri) {
         free(uri->host);
     }
 }
-
-// TODO: clean up validateDir()
-// TODO: add recursion
 
 /**
  * @brief Print a usage message to stderr and exit the process with EXIT_FAILURE.
