@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
         switch (option) {
             case 'p':
                 if (portSet) {
+                    fprintf(stderr, "port\n");
                     usage(argv[0]);
                 }
                 portSet = true;
@@ -219,11 +220,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    stringList *additionalFileNames = extractPattern(file, "[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)");
+    stringList *additionalFileNames = extractPattern(file, "[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*");
 
     if (additionalFileNames == NULL) {
         free(file);
         freeUri(&uri);
+        freeStringList(urls);
         close(clientSocket);
         fprintf(stderr, "An error occurred while extracting additional files.\n");
         exit(EXIT_FAILURE);
@@ -232,18 +234,33 @@ int main(int argc, char *argv[]) {
     free(file);
     close(clientSocket);
 
+
     for (int i = 0; i < additionalFileNames->size; ++i) {
+        fprintf(stderr, "%s\n", additionalFileNames->urls[i]);
         pid_t process = fork();
 
-        char* arguments = NULL;
-        asprintf(&arguments, "%s/%s", uri.host, additionalFileNames->urls[i]);
+        char *additionalRequest = NULL;
+        asprintf(&additionalRequest, "%s/%s", uri.host, additionalFileNames->urls[i]);
+
+        char *dArgument = (dirSet == true) ? path : "extra-files-needed-by-site";
+
+        char *arguments[10];
+        int j = 0;
+
+        arguments[j++] = argv[0];
+        arguments[j++] = "-p";
+        arguments[j++] = portStr;
+        arguments[j++] = "-d";
+        arguments[j++] = dArgument;
+        arguments[j++] = additionalRequest;
+        arguments[j++] = NULL;  // Mark the end of the argument list
 
         if (process == 0) {
-            execlp(argv[0], argv[0], "-p", portStr, arguments, NULL);
+            execvp(arguments[0], arguments);
         } else {
             int worked = -1;
             wait(&worked);
-            free(arguments);
+            free(additionalRequest);
         }
     }
 
