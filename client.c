@@ -234,10 +234,8 @@ int main(int argc, char *argv[]) {
     free(file);
     close(clientSocket);
 
-
     for (int i = 0; i < additionalFileNames->size; ++i) {
-        fprintf(stderr, "%s\n", additionalFileNames->urls[i]);
-        pid_t process = fork();
+        fprintf(stderr, "ADDITIONAL FILE: %s\n", additionalFileNames->urls[i]);
 
         char *additionalRequest = NULL;
         asprintf(&additionalRequest, "%s/%s", uri.host, additionalFileNames->urls[i]);
@@ -254,6 +252,8 @@ int main(int argc, char *argv[]) {
         arguments[j++] = dArgument;
         arguments[j++] = additionalRequest;
         arguments[j++] = NULL;  // Mark the end of the argument list
+
+        pid_t process = fork();
 
         if (process == 0) {
             execvp(arguments[0], arguments);
