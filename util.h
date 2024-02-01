@@ -26,6 +26,14 @@ typedef struct {
     int success;
 } URI;
 
+enum FILETYPE {
+    HTML = 1,
+    JS = 2,
+    CSS = 4,
+    PNG = 8,
+    JPG = 16,
+};
+
 void freeUri(URI *uri) {
     if (uri->file != NULL) {
         free(uri->file);
@@ -78,11 +86,35 @@ char* extractHeader(char *response) {
 
     size_t length = position - response;
     char* result = (char*)malloc(length + 1);
-    strncpy(result, response, length);
+    strncpy(result, (char*)response, length);
     result[length] = '\0';
 
     return result;
 
+}
+
+enum FILETYPE extractFiletype(char *header)  {
+    if (strstr(header, "text/html") != NULL) {
+        return HTML;
+    }
+
+    if (strstr(header, "script/js") != NULL) {
+        return JS;
+    }
+
+    if (strstr(header, "text/css") != NULL) {
+        return CSS;
+    }
+
+    if (strstr(header, "image/png") != NULL) {
+        return PNG;
+    }
+
+    if (strstr(header, "image/jpg") != NULL) {
+        return JPG;
+    }
+
+    return 0;
 }
 
 /**
