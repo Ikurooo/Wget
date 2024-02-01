@@ -142,9 +142,9 @@ int main(int argc, char *argv[]) {
     send(clientSocket, request, strlen(request), 0);
     free(request);
 
-    char *receivedResponse = (char*)receiveResponse(clientSocket);
-    char *header = extractHeader(receivedResponse);
-    char *file = extractContent(receivedResponse);
+    uint8_t *receivedResponse = receiveResponse(clientSocket);
+    char *header = extractHeader((char*)receivedResponse);
+    char *file = extractContent((char*)receivedResponse);
 
     free(receivedResponse);
 
