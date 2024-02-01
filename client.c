@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(fullPath, "w");
+    FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(fullPath, "wb");
 
     free(fullPath);
 
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (fprintf(outfile, "%s", file) == -1) {
+    if (fwrite(file, 1, strlen(file), outfile) == -1) {
         free(file);
         freeUri(&uri);
         close(clientSocket);
