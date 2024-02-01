@@ -110,32 +110,36 @@ char* extractContent(char *response) {
  * @param serverSocket the serverSocket
  * @return a dynamically allocated string with the entire response
  */
-char* receiveResponse(int serverSocket) {
-    char *request = malloc(BUFFER_SIZE);
-    char buffer[BUFFER_SIZE];
+uint8_t* receiveResponse(int serverSocket) {
+    uint8_t* dynamicArray = NULL;
+    ssize_t dynamicArraySize = 0;
+    ssize_t bytesRead;
 
-    size_t bytesRead = recv(serverSocket, request, BUFFER_SIZE - 1, 0);
-    size_t totalBytesRead = bytesRead;
-    request[bytesRead] = '\0';
+    uint8_t buffer[BUFFER_SIZE];
 
-    while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE - 1, 0)) > 0) {
-        buffer[bytesRead] = '\0';
-        totalBytesRead += bytesRead;
+    while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer), 0)) > 0) {
 
-        char *temp = realloc(request, totalBytesRead + 1);
+        uint8_t* temp = realloc(dynamicArray, dynamicArraySize + bytesRead);
         if (temp == NULL) {
-            free(request);
-            return strdup("FAILED TO RECEIVE CONTENT FROM SERVER");
+            free(dynamicArray);  // Free previously allocated memory
+            return NULL;
         }
+        dynamicArray = temp;
 
-        request = temp;
-        if (strcat(request, buffer) == NULL) {
-            free(request);
-            return strdup("CLIENT ERROR");
+        memcpy(dynamicArray + dynamicArraySize, buffer, bytesRead);
+        dynamicArraySize += bytesRead;
+
+        for (int i = 0; i < BUFFER_SIZE; ++i) {
+            fprintf(stderr, "%x ", dynamicArray[i]);
         }
     }
 
-    return request;
+    if (bytesRead < 0) {
+        free(dynamicArray);
+        return NULL;
+    }
+
+    return dynamicArray;
 }
 
 /**
