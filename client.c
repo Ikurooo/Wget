@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
 
         if (fullPath == NULL) {
             free(response);
-            freeUri(&uri)
+            freeUri(&uri);
             fprintf(stderr, "An error occurred while concatenating the directory.\n");
             exit(EXIT_FAILURE);
         }
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
 
     stringList *urls = extractPattern((char*)content, "https?://[a-zA-Z0-9./?=_-]+");
 
-    // TODO: make readable and remove magic values
+    // TODO: make readable and remove magic values.
 
     for (int i = 0; i < additionalFileNames->size; ++i) {
         fprintf(stderr, "ADDITIONAL FILE: %s\n", additionalFileNames->urls[i]);
@@ -303,7 +303,8 @@ int main(int argc, char *argv[]) {
     freeStringList(urls);
     exit(EXIT_SUCCESS);
 }
-// TODO: check for text/html text/css script/js for early exit
-// TODO: implement gzip and .bin .png .jpeg etc. writable
-// TODO: make multi-threaded with sync through unnamed semaphores
-// TODO: implement function to get current working directory
+// TODO: check for text/html text/css script/js for early exit.
+// TODO: implement gzip.
+// TODO: make multi-threaded with sync through unnamed semaphores.
+// TODO: implement function to get current working directory.
+// TODO: refactor receive response function to instantly write to a file.
