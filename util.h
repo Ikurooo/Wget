@@ -64,28 +64,6 @@ long parsePort(const char *portStr) {
 }
 
 /**
- * Takes a standard response and extracts the header as a dynamically allocated string.
- * @param response
- * @return a dynamically allocated string containing the header
- */
-char* extractHeader(char *response) {
-
-    char* position = strstr(response, "\r\n\r\n");
-
-    if (position == NULL) {
-        return strdup("ERROR MISSING HEADER");
-    }
-
-    size_t length = position - response;
-    char* result = (char*)malloc(length + 1);
-    strncpy(result, (char*)response, length);
-    result[length] = '\0';
-
-    return result;
-
-}
-
-/**
  * Takes a standard response and extracts the content as a dynamically allocated string.
  * @param response
  * @return a dynamically allocated string containing the content
@@ -110,24 +88,22 @@ ssize_t extractContent(uint8_t *response, ssize_t messageLength, uint8_t **conte
 ssize_t receiveResponse(uint8_t **content, int serverSocket) {
     ssize_t dynamicArraySize = 0;
     ssize_t bytesRead;
-
     uint8_t buffer[BUFFER_SIZE];
 
     while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer), 0)) > 0) {
-
-        uint8_t* temp = realloc(*content, dynamicArraySize + bytesRead);
+        uint8_t *temp = realloc(*content, dynamicArraySize + bytesRead);
         if (temp == NULL) {
-            free(content);
+            free(*content);
             return -1;
         }
         *content = temp;
 
-        memcpy(content + dynamicArraySize, buffer, bytesRead);
+        memcpy(*content + dynamicArraySize, buffer, bytesRead);
         dynamicArraySize += bytesRead;
     }
 
     if (bytesRead < 0) {
-        free(content);
+        free(*content);
         return -1;
     }
 
@@ -140,11 +116,19 @@ ssize_t receiveResponse(uint8_t **content, int serverSocket) {
  * @param status the status
  * @return 0 if everything went successful
  */
-int validateResponse(char *response) {
+int validateResponse(uint8_t *response) {
+    char *position = strstr((char*)response, "\r\n\r\n");
 
-    char *responseCopy = strdup(response);
+    if (position == NULL) {
+        return -1;
+    }
 
-    fprintf(stderr, "%s\n", responseCopy);
+    size_t headerLength = position - (char*)response + strlen("\r\n\r\n");
+    char *responseCopy = strndup((char*)response, headerLength);
+
+    if (responseCopy == NULL) {
+        return 2;
+    }
 
     char *protocol = strtok(responseCopy, " ");
     char *status = strtok(NULL, " ");

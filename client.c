@@ -145,24 +145,18 @@ int main(int argc, char *argv[]) {
     uint8_t *message = NULL;
     ssize_t messageLength = receiveResponse(&message, clientSocket);
 
-    char *header = extractHeader((char*)receivedResponse);
+    // TODO fix error in receive response
 
-    uint8_t *content = NULL;
-    ssize_t contentLength = extractContent(message, messageLength, &content);
-
-    int responseCode = validateResponse(header);
-
-    // TODO: check for text/html text/css script/js for early exit
-    // TODO: implement gzip and .bin .png .jpeg etc. writable
-
-    free(header);
-
+    int responseCode = validateResponse(message);
     if (responseCode != 0) {
         free(message);
         freeUri(&uri);
         close(clientSocket);
         exit(responseCode);
     }
+
+    uint8_t *content = NULL;
+    ssize_t contentLength = extractContent(message, messageLength, &content);
 
     char *fullPath = NULL;
 
@@ -198,7 +192,6 @@ int main(int argc, char *argv[]) {
     }
 
     FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(fullPath, "wb");
-
     free(fullPath);
 
     if (outfile == NULL)  {
@@ -209,7 +202,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (fwrite(file, 1, strlen(file), outfile) == -1) {
+    if (fwrite(content, 1, contentLength, outfile) == -1) {
         free(message);
         freeUri(&uri);
         close(clientSocket);
@@ -217,7 +210,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    stringList *urls = extractPattern(file, "https?://[a-zA-Z0-9./?=_-]+");
+    stringList *urls = extractPattern((char*)content, "https?://[a-zA-Z0-9./?=_-]+");
 
     if (urls == NULL) {
         free(message);
@@ -227,7 +220,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    stringList *additionalFileNames = extractPattern(file, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
+    stringList *additionalFileNames = extractPattern((char*)content, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
 
     if (additionalFileNames == NULL) {
         free(message);
@@ -253,7 +246,6 @@ int main(int argc, char *argv[]) {
         // of the regex that every additional file is enclosed in quotes
 
         char *dArgument = (dirSet == true) ? path : "extra-files-needed-by-site";
-        // TODO: implement function to get current working directory
 
         char *arguments[10];
         int j = 0;
@@ -268,7 +260,6 @@ int main(int argc, char *argv[]) {
 
         pid_t process = fork();
 
-        // TODO: make multi-threaded with sync through unnamed semaphores
         if (process == 0) {
             execvp(arguments[0], arguments);
         } else {
@@ -285,3 +276,7 @@ int main(int argc, char *argv[]) {
 
     exit(EXIT_SUCCESS);
 }
+// TODO: check for text/html text/css script/js for early exit
+// TODO: implement gzip and .bin .png .jpeg etc. writable
+// TODO: make multi-threaded with sync through unnamed semaphores
+// TODO: implement function to get current working directory
