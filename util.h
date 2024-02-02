@@ -41,7 +41,11 @@ void freeUri(URI *uri) {
  * @param process The name of the current process.
  */
 void usage(const char *process) {
-    fprintf(stderr, "[%s] USAGE: %s [-p PORT] [-d DIRECTORY | -o OUTPUT FILE] DOMAIN\n", process, process);
+    fprintf(stderr, "[%s] USAGE: %s [-p PORT] "
+                                  "[-d DIRECTORY | -o OUTPUT FILE] "
+                                  "[-r RECURSION LEVEL] "
+                                  "[-g] "
+                                  "DOMAIN\n", process, process);
     exit(EXIT_FAILURE);
 }
 

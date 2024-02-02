@@ -32,9 +32,10 @@ int main(int argc, char *argv[]) {
     bool fileSet = false;
     bool dirSet = false;
     bool recursionSet = false;
+    bool getAdditionalFiles = false;
 
     int option;
-    while ((option = getopt(argc, argv, "p:o:d:r:")) != -1) {
+    while ((option = getopt(argc, argv, "p:o:d:r:g")) != -1) {
         switch (option) {
             case 'p':
                 if (portSet) {
@@ -68,6 +69,12 @@ int main(int argc, char *argv[]) {
                 }
                 recursionSet = true;
                 recursionLevel = convertStringToLong(optarg);
+                break;
+            case 'g':
+                if (getAdditionalFiles) {
+                    usage(argv[0]);
+                }
+                getAdditionalFiles = true;
                 break;
             case '?':
                 usage(argv[0]);
@@ -234,6 +241,11 @@ int main(int argc, char *argv[]) {
         close(clientSocket);
         fprintf(stderr, "Failed saving content to file.\n");
         exit(EXIT_FAILURE);
+    }
+
+    // Exit program if we don't want to get additional files.
+    if (getAdditionalFiles != true) {
+        exit(EXIT_SUCCESS);
     }
 
     stringList *urls = extractPattern((char*)content, "https?://[a-zA-Z0-9./?=_-]+");
