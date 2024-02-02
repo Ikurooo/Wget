@@ -26,14 +26,6 @@ typedef struct {
     int success;
 } URI;
 
-enum FILETYPE {
-    HTML = 1,
-    JS = 2,
-    CSS = 4,
-    PNG = 8,
-    JPG = 16,
-};
-
 void freeUri(URI *uri) {
     if (uri->file != NULL) {
         free(uri->file);
@@ -93,48 +85,21 @@ char* extractHeader(char *response) {
 
 }
 
-enum FILETYPE extractFiletype(char *header)  {
-    if (strstr(header, "text/html") != NULL) {
-        return HTML;
-    }
-
-    if (strstr(header, "script/js") != NULL) {
-        return JS;
-    }
-
-    if (strstr(header, "text/css") != NULL) {
-        return CSS;
-    }
-
-    if (strstr(header, "image/png") != NULL) {
-        return PNG;
-    }
-
-    if (strstr(header, "image/jpg") != NULL) {
-        return JPG;
-    }
-
-    return 0;
-}
-
 /**
  * Takes a standard response and extracts the content as a dynamically allocated string.
  * @param response
  * @return a dynamically allocated string containing the content
  */
-char* extractContent(char *response) {
-    char* position = strstr(response, "\r\n\r\n");
+ssize_t extractContent(uint8_t *response, ssize_t messageLength, uint8_t **content) {
+    char* position = strstr((char*)response, "\r\n\r\n");
 
     if (position == NULL) {
-        return strdup("ERROR MISSING CONTENT");
+        *content = NULL;
+        return -1;
     }
+    *content = response + strlen("\r\n\r\n");
 
-    size_t length = strlen(response) - (position - response + strlen("\r\n\r\n"));
-    char* result = (char*)malloc(length + 1);
-
-    strcpy(result, position + strlen("\r\n\r\n"));
-
-    return result;
+    return messageLength - (*content - response);
 }
 
 /**
@@ -142,8 +107,7 @@ char* extractContent(char *response) {
  * @param serverSocket the serverSocket
  * @return a dynamically allocated string with the entire response
  */
-uint8_t* receiveResponse(int serverSocket) {
-    uint8_t* dynamicArray = NULL;
+ssize_t receiveResponse(uint8_t **content, int serverSocket) {
     ssize_t dynamicArraySize = 0;
     ssize_t bytesRead;
 
@@ -151,27 +115,23 @@ uint8_t* receiveResponse(int serverSocket) {
 
     while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer), 0)) > 0) {
 
-        uint8_t* temp = realloc(dynamicArray, dynamicArraySize + bytesRead);
+        uint8_t* temp = realloc(*content, dynamicArraySize + bytesRead);
         if (temp == NULL) {
-            free(dynamicArray);  // Free previously allocated memory
-            return NULL;
+            free(content);
+            return -1;
         }
-        dynamicArray = temp;
+        *content = temp;
 
-        memcpy(dynamicArray + dynamicArraySize, buffer, bytesRead);
+        memcpy(content + dynamicArraySize, buffer, bytesRead);
         dynamicArraySize += bytesRead;
-
-        for (int i = 0; i < BUFFER_SIZE; ++i) {
-            fprintf(stderr, "%x ", dynamicArray[i]);
-        }
     }
 
     if (bytesRead < 0) {
-        free(dynamicArray);
-        return NULL;
+        free(content);
+        return -1;
     }
 
-    return dynamicArray;
+    return dynamicArraySize;
 }
 
 /**

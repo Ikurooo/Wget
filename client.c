@@ -142,11 +142,13 @@ int main(int argc, char *argv[]) {
     send(clientSocket, request, strlen(request), 0);
     free(request);
 
-    uint8_t *receivedResponse = receiveResponse(clientSocket);
-    char *header = extractHeader((char*)receivedResponse);
-    char *file = extractContent((char*)receivedResponse);
+    uint8_t *message = NULL;
+    ssize_t messageLength = receiveResponse(&message, clientSocket);
 
-    free(receivedResponse);
+    char *header = extractHeader((char*)receivedResponse);
+
+    uint8_t *content = NULL;
+    ssize_t contentLength = extractContent(message, messageLength, &content);
 
     int responseCode = validateResponse(header);
 
@@ -156,7 +158,7 @@ int main(int argc, char *argv[]) {
     free(header);
 
     if (responseCode != 0) {
-        free(file);
+        free(message);
         freeUri(&uri);
         close(clientSocket);
         exit(responseCode);
@@ -166,7 +168,7 @@ int main(int argc, char *argv[]) {
 
     if (fileSet == true) {
         if (validateFile(path) == -1) {
-            free(file);
+            free(message);
             freeUri(&uri);
             close(clientSocket);
             fprintf(stderr, "An error occurred while parsing the file.\n");
@@ -177,7 +179,7 @@ int main(int argc, char *argv[]) {
 
     if (dirSet == true) {
         if (createDir(path) == -1) {
-            free(file);
+            free(message);
             freeUri(&uri);
             close(clientSocket);
             fprintf(stderr, "An error occurred while creating the directory.\n");
@@ -187,7 +189,7 @@ int main(int argc, char *argv[]) {
         fullPath = catFileNameToDir(uri.file, path);
 
         if (fullPath == NULL) {
-            free(file);
+            free(message);
             freeUri(&uri);
             close(clientSocket);
             fprintf(stderr, "An error occurred while concatenating the directory.\n");
@@ -200,7 +202,7 @@ int main(int argc, char *argv[]) {
     free(fullPath);
 
     if (outfile == NULL)  {
-        free(file);
+        free(message);
         freeUri(&uri);
         close(clientSocket);
         fprintf(stderr, "ERROR opening output file\n");
@@ -208,7 +210,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (fwrite(file, 1, strlen(file), outfile) == -1) {
-        free(file);
+        free(message);
         freeUri(&uri);
         close(clientSocket);
         fprintf(stderr, "Failed saving content to file.\n");
@@ -218,7 +220,7 @@ int main(int argc, char *argv[]) {
     stringList *urls = extractPattern(file, "https?://[a-zA-Z0-9./?=_-]+");
 
     if (urls == NULL) {
-        free(file);
+        free(message);
         freeUri(&uri);
         close(clientSocket);
         fprintf(stderr, "An error occurred while extracting urls.\n");
@@ -228,7 +230,7 @@ int main(int argc, char *argv[]) {
     stringList *additionalFileNames = extractPattern(file, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
 
     if (additionalFileNames == NULL) {
-        free(file);
+        free(message);
         freeUri(&uri);
         freeStringList(urls);
         close(clientSocket);
@@ -236,7 +238,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    free(file);
+    free(message);
     close(clientSocket);
 
     // TODO: make readable and remove magic values
