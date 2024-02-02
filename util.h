@@ -65,19 +65,22 @@ long parsePort(const char *portStr) {
 
 /**
  * Takes a standard response and extracts the content as a dynamically allocated string.
- * @param response
+ * @param response the response from the server
+ * @implNote this function can only handle headers up to 64KB on some systems
  * @return a dynamically allocated string containing the content
  */
-ssize_t extractContent(uint8_t *response, ssize_t messageLength, uint8_t **content) {
+size_t extractContent(uint8_t *response, ssize_t messageLength, uint8_t **content) {
     char* position = strstr((char*)response, "\r\n\r\n");
 
     if (position == NULL) {
         *content = NULL;
-        return -1;
+        return 0;
     }
-    *content = response + strlen("\r\n\r\n");
 
-    return messageLength - (*content - response);
+    size_t headerLength = position - (char*)response + strlen("\r\n\r\n");
+
+    *content = response + headerLength;
+    return messageLength - headerLength;
 }
 
 /**

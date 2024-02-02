@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
     }
 
     uint8_t *content = NULL;
-    ssize_t contentLength = extractContent(message, messageLength, &content);
+    size_t contentLength = extractContent(message, messageLength, &content);
 
     char *fullPath = NULL;
 
