@@ -88,25 +88,25 @@ size_t extractContent(uint8_t *response, ssize_t messageLength, uint8_t **conten
  * @param serverSocket the serverSocket
  * @return a dynamically allocated string with the entire response
  */
-ssize_t receiveResponse(uint8_t **content, int serverSocket) {
+ssize_t receiveResponse(uint8_t **response, int serverSocket) {
     ssize_t dynamicArraySize = 0;
     ssize_t bytesRead;
     uint8_t buffer[BUFFER_SIZE];
 
     while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer), 0)) > 0) {
-        uint8_t *temp = realloc(*content, dynamicArraySize + bytesRead);
+        uint8_t *temp = realloc(*response, dynamicArraySize + bytesRead);
         if (temp == NULL) {
-            free(*content);
+            free(*response);
             return -1;
         }
-        *content = temp;
+        *response = temp;
 
-        memcpy(*content + dynamicArraySize, buffer, bytesRead);
+        memcpy(*response + dynamicArraySize, buffer, bytesRead);
         dynamicArraySize += bytesRead;
     }
 
     if (bytesRead < 0) {
-        free(*content);
+        free(*response);
         return -1;
     }
 
@@ -144,13 +144,6 @@ int validateResponse(uint8_t *response) {
     }
 
     if (strncmp(protocol, "HTTP/1.1", 8) != 0) {
-        fprintf(stderr, "%s %s\n", status, misc);
-        free(responseCopy);
-        return 2;
-    }
-
-    // Check if status contains only numeric characters
-    if (strspn(status, "0123456789") != strlen(status)) {
         fprintf(stderr, "%s %s\n", status, misc);
         free(responseCopy);
         return 2;

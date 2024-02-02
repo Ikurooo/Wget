@@ -138,31 +138,57 @@ int main(int argc, char *argv[]) {
     }
 
     char *request = NULL;
-    asprintf(&request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", uri.file, uri.host);
-    send(clientSocket, request, strlen(request), 0);
+
+    if (asprintf(&request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", uri.file, uri.host) == -1) {
+        fprintf(stderr, "Error creating HTTP request");
+        exit(EXIT_FAILURE);
+    }
+
+    size_t requestLength = strlen(request);
+    ssize_t bytesSent = send(clientSocket, request, requestLength, 0);
+
+    // TODO: add chunked requests
+    if (bytesSent == -1 || bytesSent < requestLength) {
+        fprintf(stderr, "Error sending HTTP request");
+        exit(EXIT_FAILURE);
+    }
+
     free(request);
 
-    uint8_t *message = NULL;
-    ssize_t messageLength = receiveResponse(&message, clientSocket);
+    uint8_t *response = NULL;
+    ssize_t responseLength = receiveResponse(&response, clientSocket);
 
-    // TODO fix error in receive response
+    if (responseLength == -1) {
+        freeUri(&uri);
+        close(clientSocket);
+        fprintf(stderr, "No response present.\n");
+        exit(EXIT_FAILURE);
+    }
 
-    int responseCode = validateResponse(message);
+    int responseCode = validateResponse(response);
     if (responseCode != 0) {
-        free(message);
+        free(response);
         freeUri(&uri);
         close(clientSocket);
         exit(responseCode);
     }
 
     uint8_t *content = NULL;
-    size_t contentLength = extractContent(message, messageLength, &content);
+    size_t contentLength = extractContent(response, responseLength, &content);
+
+    if (contentLength == 0) {
+        free(response);
+        freeUri(&uri);
+        close(clientSocket);
+        fprintf(stderr, "No content present.\n");
+        exit(EXIT_FAILURE);
+    }
 
     char *fullPath = NULL;
 
     if (fileSet == true) {
         if (validateFile(path) == -1) {
-            free(message);
+            free(response);
             freeUri(&uri);
             close(clientSocket);
             fprintf(stderr, "An error occurred while parsing the file.\n");
@@ -173,7 +199,7 @@ int main(int argc, char *argv[]) {
 
     if (dirSet == true) {
         if (createDir(path) == -1) {
-            free(message);
+            free(response);
             freeUri(&uri);
             close(clientSocket);
             fprintf(stderr, "An error occurred while creating the directory.\n");
@@ -183,7 +209,7 @@ int main(int argc, char *argv[]) {
         fullPath = catFileNameToDir(uri.file, path);
 
         if (fullPath == NULL) {
-            free(message);
+            free(response);
             freeUri(&uri);
             close(clientSocket);
             fprintf(stderr, "An error occurred while concatenating the directory.\n");
@@ -195,7 +221,7 @@ int main(int argc, char *argv[]) {
     free(fullPath);
 
     if (outfile == NULL)  {
-        free(message);
+        free(response);
         freeUri(&uri);
         close(clientSocket);
         fprintf(stderr, "ERROR opening output file\n");
@@ -203,7 +229,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (fwrite(content, 1, contentLength, outfile) == -1) {
-        free(message);
+        free(response);
         freeUri(&uri);
         close(clientSocket);
         fprintf(stderr, "Failed saving content to file.\n");
@@ -213,7 +239,7 @@ int main(int argc, char *argv[]) {
     stringList *urls = extractPattern((char*)content, "https?://[a-zA-Z0-9./?=_-]+");
 
     if (urls == NULL) {
-        free(message);
+        free(response);
         freeUri(&uri);
         close(clientSocket);
         fprintf(stderr, "An error occurred while extracting urls.\n");
@@ -223,7 +249,7 @@ int main(int argc, char *argv[]) {
     stringList *additionalFileNames = extractPattern((char*)content, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
 
     if (additionalFileNames == NULL) {
-        free(message);
+        free(response);
         freeUri(&uri);
         freeStringList(urls);
         close(clientSocket);
@@ -231,7 +257,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    free(message);
+    free(response);
     close(clientSocket);
 
     // TODO: make readable and remove magic values
