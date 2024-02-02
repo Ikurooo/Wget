@@ -164,10 +164,10 @@ int main(int argc, char *argv[]) {
 
     uint8_t *response = NULL;
     ssize_t responseLength = receiveResponse(&response, clientSocket);
+    close(clientSocket);
 
     if (responseLength == -1) {
         freeUri(&uri);
-        close(clientSocket);
         fprintf(stderr, "No response present.\n");
         exit(EXIT_FAILURE);
     }
@@ -176,7 +176,6 @@ int main(int argc, char *argv[]) {
     if (responseCode != 0) {
         free(response);
         freeUri(&uri);
-        close(clientSocket);
         exit(responseCode);
     }
 
@@ -186,7 +185,6 @@ int main(int argc, char *argv[]) {
     if (contentLength == 0) {
         free(response);
         freeUri(&uri);
-        close(clientSocket);
         fprintf(stderr, "No content present.\n");
         exit(EXIT_FAILURE);
     }
@@ -197,7 +195,6 @@ int main(int argc, char *argv[]) {
         if (validateFile(path) == -1) {
             free(response);
             freeUri(&uri);
-            close(clientSocket);
             fprintf(stderr, "An error occurred while parsing the file.\n");
             exit(EXIT_FAILURE);
         }
@@ -208,7 +205,6 @@ int main(int argc, char *argv[]) {
         if (createDir(path) == -1) {
             free(response);
             freeUri(&uri);
-            close(clientSocket);
             fprintf(stderr, "An error occurred while creating the directory.\n");
             exit(EXIT_FAILURE);
         }
@@ -217,8 +213,7 @@ int main(int argc, char *argv[]) {
 
         if (fullPath == NULL) {
             free(response);
-            freeUri(&uri);
-            close(clientSocket);
+            freeUri(&uri)
             fprintf(stderr, "An error occurred while concatenating the directory.\n");
             exit(EXIT_FAILURE);
         }
@@ -230,7 +225,6 @@ int main(int argc, char *argv[]) {
     if (outfile == NULL)  {
         free(response);
         freeUri(&uri);
-        close(clientSocket);
         fprintf(stderr, "ERROR opening output file\n");
         exit(EXIT_FAILURE);
     }
@@ -238,24 +232,15 @@ int main(int argc, char *argv[]) {
     if (fwrite(content, 1, contentLength, outfile) == -1) {
         free(response);
         freeUri(&uri);
-        close(clientSocket);
         fprintf(stderr, "Failed saving content to file.\n");
         exit(EXIT_FAILURE);
     }
 
     // Exit program if we don't want to get additional files.
     if (getAdditionalFiles != true) {
-        exit(EXIT_SUCCESS);
-    }
-
-    stringList *urls = extractPattern((char*)content, "https?://[a-zA-Z0-9./?=_-]+");
-
-    if (urls == NULL) {
         free(response);
         freeUri(&uri);
-        close(clientSocket);
-        fprintf(stderr, "An error occurred while extracting urls.\n");
-        exit(EXIT_FAILURE);
+        exit(EXIT_SUCCESS);
     }
 
     stringList *additionalFileNames = extractPattern((char*)content, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
@@ -263,14 +248,11 @@ int main(int argc, char *argv[]) {
     if (additionalFileNames == NULL) {
         free(response);
         freeUri(&uri);
-        freeStringList(urls);
-        close(clientSocket);
         fprintf(stderr, "An error occurred while extracting additional files.\n");
         exit(EXIT_FAILURE);
     }
 
-    free(response);
-    close(clientSocket);
+    stringList *urls = extractPattern((char*)content, "https?://[a-zA-Z0-9./?=_-]+");
 
     // TODO: make readable and remove magic values
 
@@ -307,11 +289,18 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    freeUri(&uri);
-
-    freeStringList(urls);
     freeStringList(additionalFileNames);
 
+    if (urls == NULL) {
+        free(response);
+        freeUri(&uri);
+        fprintf(stderr, "An error occurred while extracting urls.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    freeUri(&uri);
+    free(response);
+    freeStringList(urls);
     exit(EXIT_SUCCESS);
 }
 // TODO: check for text/html text/css script/js for early exit
