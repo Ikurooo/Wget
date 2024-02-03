@@ -256,6 +256,7 @@ int main(int argc, char *argv[]) {
 
     // TODO: make readable and remove magic values.
 
+    char *dArgument = (dirSet == true) ? path : "extra";
     for (int i = 0; i < additionalFileNames->size; ++i) {
         fprintf(stderr, "ADDITIONAL FILE: %s\n", additionalFileNames->urls[i]);
 
@@ -264,8 +265,6 @@ int main(int argc, char *argv[]) {
         additionalRequest[strlen(additionalRequest) - 1] = '\0';
         // hacky way for now but move pointer by one char since we know because
         // of the regex that every additional file is enclosed in quotes
-
-        char *dArgument = (dirSet == true) ? path : "extra-files-needed-by-site";
 
         char *arguments[10];
         int j = 0;
@@ -276,7 +275,7 @@ int main(int argc, char *argv[]) {
         arguments[j++] = "-d";
         arguments[j++] = dArgument;
         arguments[j++] = additionalRequest;
-        arguments[j] = NULL;  // Mark the end of the argument list
+        arguments[j] = NULL;
 
         pid_t process = fork();
 
@@ -290,6 +289,10 @@ int main(int argc, char *argv[]) {
     }
 
     freeStringList(additionalFileNames);
+
+    if (recursionLevel == EXIT_RECURSION) {
+        exit(EXIT_SUCCESS);
+    }
 
     if (urls == NULL) {
         free(response);

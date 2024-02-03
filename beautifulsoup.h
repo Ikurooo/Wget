@@ -81,3 +81,31 @@ long convertStringToLong(char *string) {
 
     return longInteger;
 }
+
+/**
+ * A wrapper function around getcwdu()
+ * @return dynamically allocated string with the current working directory
+ */
+char *getCurrentWorkingDirectory(void) {
+    // Initial buffer size for the current working directory
+    size_t directory_length = 1024;
+
+    char *cwd = malloc(directory_length);
+    if (cwd == NULL) {
+        fprintf(stderr, "An error occurred while retrieving the working directory.\n");
+        return NULL;
+    }
+
+    while (getcwd(cwd, directory_length) == NULL) {
+        directory_length *= 2;
+        char *temp = realloc(cwd, directory_length);
+        if (cwd == NULL) {
+            free(cwd);
+            fprintf(stderr, "An error occurred while retrieving the working directory.\n");
+            return NULL;
+        }
+        cwd = temp;
+    }
+
+    return cwd;
+}
