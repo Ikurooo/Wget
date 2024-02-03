@@ -97,8 +97,8 @@ ssize_t receiveResponse(uint8_t **response, int serverSocket) {
     ssize_t bytesRead;
     uint8_t buffer[BUFFER_SIZE];
 
-    while ((bytesRead = recv(serverSocket, buffer, sizeof(buffer), 0)) > 0) {
-        uint8_t *temp = realloc(*response, dynamicArraySize + bytesRead);
+    while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+        uint8_t *temp = realloc(*response, dynamicArraySize + bytesRead + 1); // +1 for null-terminator
         if (temp == NULL) {
             free(*response);
             return -1;
@@ -107,6 +107,7 @@ ssize_t receiveResponse(uint8_t **response, int serverSocket) {
 
         memcpy(*response + dynamicArraySize, buffer, bytesRead);
         dynamicArraySize += bytesRead;
+        (*response)[dynamicArraySize] = '\0'; // Null-terminate the received data
     }
 
     if (bytesRead < 0) {
@@ -116,6 +117,7 @@ ssize_t receiveResponse(uint8_t **response, int serverSocket) {
 
     return dynamicArraySize;
 }
+
 
 /**
  * @brief Validates the response.
