@@ -18,17 +18,17 @@ git clone this repo
 
 ## Instructions
 
-use make to build the server
+use make to build the app
 
 ## Usage
 
 ```sh
-./wget [-p PORT] [-d DIRECTORY | -o OUTPUT FILE] [-r RECURSION LEVEL] [-g] URL
+./wget [-p PORT] [-d DIRECTORY | -o OUTPUT FILE] URL
 ```
 
 ## Features
-- Download websites (recursively and with or without all files linked on the site)
-- Download small files (yet to implement efficient large file downloads)
+- Download websites
+- Download files
 - Specify output directory or output file; if left unspecified it will get printed to the terminal
 - Handle responses according to HTTP/1.1 standard (yet to implement 302)
 - NOTE: https is as of now NOT securely implemented
@@ -36,7 +36,6 @@ use make to build the server
 ## Limitations
 - HTTP/1.1
 - IPv4
-- Downloads on 16-bit systems up to 64KB; on 32-bit systems up to 4GB; on 64-bit systems up to 16TB (If you have enough system memory)
 
 ## Meta
 Ivan Cankov - ivanecankov@gmail.com
