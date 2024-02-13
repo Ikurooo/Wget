@@ -10,11 +10,6 @@
 #include <assert.h>
 #include "util.h"
 
-// SYNOPSIS
-//       client [-p PORT] [ -o FILE | -d DIR ] URL
-// EXAMPLE
-//       client http://www.example.com/
-
 /**
  * @brief Entrypoint of the programme. (Sets up and runs client)
  * @details the program uses the HTTP protocol and can accept files that are in plain text.
