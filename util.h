@@ -217,7 +217,6 @@ URI parseUrl(const char *url) {
         fileLength = strlen(uri.file);
     }
 
-    // TODO: get rid of the casts for portability and stability
     if (asprintf(&uri.host, "%.*s", (int)(strlen(url) - hostOffset - fileLength), (url + hostOffset)) == -1) {
         freeUri(&uri);
         return uri;
