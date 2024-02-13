@@ -15,10 +15,7 @@
 #include <unistd.h>
 #include <limits.h>
 
-#include "beautifulsoup.h"
-
 #define BUFFER_SIZE (2048)
-#define EXIT_RECURSION (0)
 
 typedef struct {
     char *file;
@@ -43,8 +40,6 @@ void freeUri(URI *uri) {
 void usage(const char *process) {
     fprintf(stderr, "[%s] USAGE: %s [-p PORT] "
                                   "[-d DIRECTORY | -o OUTPUT FILE] "
-                                  "[-r RECURSION LEVEL] "
-                                  "[-g] "
                                   "DOMAIN\n", process, process);
     exit(EXIT_FAILURE);
 }
@@ -224,13 +219,12 @@ URI parseUrl(const char *url) {
 
     // TODO: get rid of the casts for portability and stability
     if (asprintf(&uri.host, "%.*s", (int)(strlen(url) - hostOffset - fileLength), (url + hostOffset)) == -1) {
-        free(uri.file);
+        freeUri(&uri);
         return uri;
     }
 
     if (strlen(uri.host) == 0) {
-        free(uri.host);
-        free(uri.file);
+        freeUri(&uri);
         return uri;
     }
 

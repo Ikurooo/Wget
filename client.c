@@ -1,12 +1,13 @@
 /**
  * @file client.c
  * @author Ivan Cankov 12219400 <e12219400@student.tuwien.ac.at>
- * @date 07.01.2024
- * @brief A simple HTTP client in C
+ * @date 13.02.2024
+ * @brief A simple wget implementation in C
+ * @version 1.0.0
  **/
 #define _GNU_SOURCE
 
-#include <sys/wait.h>
+#include <assert.h>
 #include "util.h"
 
 // SYNOPSIS
@@ -22,7 +23,6 @@
  * @return
  */
 int main(int argc, char *argv[]) {
-    long recursionLevel = 1; // EXIT_RECURSION = 0; if you don't want any recursion set it to one <- default value
     char *portStr = "80";
     char *url = NULL;
     char *path = NULL;
@@ -31,11 +31,9 @@ int main(int argc, char *argv[]) {
     bool portSet = false;
     bool fileSet = false;
     bool dirSet = false;
-    bool recursionSet = false;
-    bool getAdditionalFiles = false;
 
     int option;
-    while ((option = getopt(argc, argv, "p:o:d:r:g")) != -1) {
+    while ((option = getopt(argc, argv, "p:o:d:")) != -1) {
         switch (option) {
             case 'p':
                 if (portSet) {
@@ -63,19 +61,6 @@ int main(int argc, char *argv[]) {
                 dirSet = true;
                 path = optarg;
                 break;
-            case 'r':
-                if (recursionSet) {
-                    usage(argv[0]);
-                }
-                recursionSet = true;
-                recursionLevel = convertStringToLong(optarg);
-                break;
-            case 'g':
-                if (getAdditionalFiles) {
-                    usage(argv[0]);
-                }
-                getAdditionalFiles = true;
-                break;
             case '?':
                 usage(argv[0]);
                 break;
@@ -87,18 +72,6 @@ int main(int argc, char *argv[]) {
     if (argc - optind != 1) {
         usage(argv[0]);
     }
-
-    if (errno == ERANGE && recursionLevel == ULONG_MAX) {
-        exit(EXIT_FAILURE);
-    }
-
-    if (recursionLevel == EXIT_RECURSION) {
-        exit(EXIT_SUCCESS);
-    }
-
-    // Decrement recursion level for next iteration or early exit if no
-    // recursion depth was specified to save on memory
-    recursionLevel -= 1;
 
     url = argv[optind];
     uri = parseUrl(url);
@@ -147,6 +120,7 @@ int main(int argc, char *argv[]) {
     char *request = NULL;
 
     if (asprintf(&request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", uri.file, uri.host) == -1) {
+        close(clientSocket);
         fprintf(stderr, "Error creating HTTP request");
         exit(EXIT_FAILURE);
     }
@@ -154,8 +128,8 @@ int main(int argc, char *argv[]) {
     size_t requestLength = strlen(request);
     ssize_t bytesSent = send(clientSocket, request, requestLength, 0);
 
-    // TODO: add chunked requests
     if (bytesSent == -1 || bytesSent < requestLength) {
+        close(clientSocket);
         fprintf(stderr, "Error sending HTTP request");
         exit(EXIT_FAILURE);
     }
@@ -174,76 +148,8 @@ int main(int argc, char *argv[]) {
         close(clientSocket);
         exit(EXIT_FAILURE);
     }
+
     close(clientSocket);
-
-    // Exit program if we don't want to get additional files.
-    if (getAdditionalFiles != true) {
-        freeUri(&uri);
-        exit(EXIT_SUCCESS);
-    }
-
-    // stringList *additionalFileNames = extractPattern((char*)content, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
-    stringList *additionalFileNames = NULL;
-
-    if (additionalFileNames == NULL) {
-        freeUri(&uri);
-        fprintf(stderr, "An error occurred while extracting additional files.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    stringList *urls = extractPattern("DEBUG", "https?://[a-zA-Z0-9./?=_-]+");
-
-    // TODO: make readable and remove magic values.
-
-    char *dArgument = (dirSet == true) ? path : "extra";
-    for (int i = 0; i < additionalFileNames->size; ++i) {
-        fprintf(stderr, "ADDITIONAL FILE: %s\n", additionalFileNames->urls[i]);
-
-        char *additionalRequest = NULL;
-        asprintf(&additionalRequest, "%s/%s", uri.host, additionalFileNames->urls[i] + 1);
-        additionalRequest[strlen(additionalRequest) - 1] = '\0';
-        // hacky way for now but move pointer by one char since we know because
-        // of the regex that every additional file is enclosed in quotes
-
-        char *arguments[10];
-        int j = 0;
-
-        arguments[j++] = argv[0];
-        arguments[j++] = "-p";
-        arguments[j++] = portStr;
-        arguments[j++] = "-d";
-        arguments[j++] = dArgument;
-        arguments[j++] = additionalRequest;
-        arguments[j] = NULL;
-
-        pid_t process = fork();
-
-        if (process == 0) {
-            execvp(arguments[0], arguments);
-        } else {
-            int worked = -1;
-            wait(&worked);
-            free(additionalRequest);
-        }
-    }
-
-    freeStringList(additionalFileNames);
-
-    if (recursionLevel == EXIT_RECURSION) {
-        exit(EXIT_SUCCESS);
-    }
-
-    if (urls == NULL) {
-        freeUri(&uri);
-        fprintf(stderr, "An error occurred while extracting urls.\n");
-        exit(EXIT_FAILURE);
-    }
-
     freeUri(&uri);
-    freeStringList(urls);
     exit(EXIT_SUCCESS);
 }
-// TODO: check for text/html text/css script/js for early exit.
-// TODO: implement gzip.
-// TODO: make multi-threaded with sync through unnamed semaphores.
-// TODO: implement function to get current working directory.
