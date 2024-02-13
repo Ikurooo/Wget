@@ -88,44 +88,17 @@ size_t extractContent(uint8_t *response, ssize_t messageLength, uint8_t **conten
 }
 
 /**
- * Receives a response from a server and packs all of it into a dynamically allocated string.
- * @param serverSocket the serverSocket
- * @return a dynamically allocated string with the entire response
- */
-ssize_t receiveResponse(uint8_t **response, int serverSocket) {
-    ssize_t dynamicArraySize = 0;
-    ssize_t bytesRead;
-    uint8_t buffer[BUFFER_SIZE];
-
-    while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE, 0)) > 0) {
-        uint8_t *temp = realloc(*response, dynamicArraySize + bytesRead + 1); // +1 for null-terminator
-        if (temp == NULL) {
-            free(*response);
-            return -1;
-        }
-        *response = temp;
-
-        memcpy(*response + dynamicArraySize, buffer, bytesRead);
-        dynamicArraySize += bytesRead;
-        (*response)[dynamicArraySize] = '\0'; // Null-terminate the received data
-    }
-
-    if (bytesRead < 0) {
-        free(*response);
-        return -1;
-    }
-
-    return dynamicArraySize;
-}
-
-
-/**
  * @brief Validates the response.
  * @param protocol the protocol
  * @param status the status
  * @return 0 if everything went successful
  */
 int validateResponse(uint8_t *response) {
+
+    if (response == NULL) {
+        return -1;
+    }
+
     char *position = strstr((char*)response, "\r\n\r\n");
 
     if (position == NULL) {
@@ -163,6 +136,63 @@ int validateResponse(uint8_t *response) {
 
     free(responseCopy);
     return 0;
+}
+
+/**
+ * Receives a response from a server and packs all of it into a dynamically allocated string.
+ * @param serverSocket the serverSocket
+ * @return a dynamically allocated string with the entire response
+ */
+ssize_t receiveHeaderAndWriteToFile(FILE *file, int serverSocket) {
+    ssize_t headerSize = 0;
+    ssize_t bytesRead;
+    uint8_t buffer[BUFFER_SIZE];
+    uint8_t *header = NULL;
+    char *headerEnd;
+
+    // Read until header is received (\r\n\r\n)
+    while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+        uint8_t *temp = realloc(header, headerSize + bytesRead + 1); // +1 for null-terminator
+        if (temp == NULL) {
+            free(header);
+            return -1;
+        }
+        header = temp;
+
+        memcpy(header + headerSize, buffer, bytesRead);
+        headerSize += bytesRead;
+        header[headerSize] = '\0'; // Null-terminate the received data
+
+        // Check if the header has been received
+        headerEnd = strstr((char*)header, "\r\n\r\n");
+        if (headerEnd != NULL) {
+            break;
+        }
+    }
+
+    // Validate the header
+    if (validateResponse(header) != 0) {
+        free(header);
+        return -1; // Invalid header
+    }
+
+    // Write everything after the header to the provided file
+    if (headerEnd != NULL) {
+        ssize_t remainingSize = headerSize - (headerEnd - (char*)header) - 4; // Exclude the "\r\n\r\n" from headerSize
+        fwrite(headerEnd + 4, 1, remainingSize, file);
+    }
+
+    while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+        fwrite(buffer, 1, bytesRead, file);
+    }
+
+    free(header);
+
+    if (bytesRead < 0) {
+        return -1; // Error reading from socket
+    }
+
+    return headerSize;
 }
 
 /**
