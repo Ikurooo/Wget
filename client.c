@@ -12,7 +12,7 @@
 
 /**
  * @brief Entrypoint of the programme. (Sets up and runs client)
- * @details the program uses the HTTP protocol and can accept files that are in plain text.
+ * @details the program uses the HTTP protocol to download files and websites
  * @param argc
  * @param argv
  * @return
