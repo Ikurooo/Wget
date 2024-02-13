@@ -18,7 +18,7 @@ git clone this repo
 
 ## Instructions
 
-use make to build the server
+use make to build the app
 
 ## Usage
 
