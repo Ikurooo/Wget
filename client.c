@@ -159,41 +159,12 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error sending HTTP request");
         exit(EXIT_FAILURE);
     }
-
     free(request);
-
-    uint8_t *response = NULL;
-    ssize_t responseLength = receiveResponse(&response, clientSocket);
-    close(clientSocket);
-
-    if (responseLength == -1) {
-        freeUri(&uri);
-        fprintf(stderr, "No response present.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    int responseCode = validateResponse(response);
-    if (responseCode != 0) {
-        free(response);
-        freeUri(&uri);
-        exit(responseCode);
-    }
-
-    uint8_t *content = NULL;
-    size_t contentLength = extractContent(response, responseLength, &content);
-
-    if (contentLength == 0) {
-        free(response);
-        freeUri(&uri);
-        fprintf(stderr, "No content present.\n");
-        exit(EXIT_FAILURE);
-    }
 
     char *fullPath = NULL;
 
     if (fileSet == true) {
         if (validateFile(path) == -1) {
-            free(response);
             freeUri(&uri);
             fprintf(stderr, "An error occurred while parsing the file.\n");
             exit(EXIT_FAILURE);
@@ -203,7 +174,6 @@ int main(int argc, char *argv[]) {
 
     if (dirSet == true) {
         if (createDir(path) == -1) {
-            free(response);
             freeUri(&uri);
             fprintf(stderr, "An error occurred while creating the directory.\n");
             exit(EXIT_FAILURE);
@@ -212,7 +182,6 @@ int main(int argc, char *argv[]) {
         fullPath = catFileNameToDir(uri.file, path);
 
         if (fullPath == NULL) {
-            free(response);
             freeUri(&uri);
             fprintf(stderr, "An error occurred while concatenating the directory.\n");
             exit(EXIT_FAILURE);
@@ -223,16 +192,18 @@ int main(int argc, char *argv[]) {
     free(fullPath);
 
     if (outfile == NULL)  {
-        free(response);
         freeUri(&uri);
         fprintf(stderr, "ERROR opening output file\n");
         exit(EXIT_FAILURE);
     }
 
-    if (fwrite(content, 1, contentLength, outfile) == -1) {
-        free(response);
+    uint8_t *response = NULL;
+    ssize_t responseLength = receiveHeaderAndWriteToFile(outfile, clientSocket);
+    close(clientSocket);
+
+    if (responseLength == -1) {
         freeUri(&uri);
-        fprintf(stderr, "Failed saving content to file.\n");
+        fprintf(stderr, "No response present.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -243,7 +214,8 @@ int main(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
-    stringList *additionalFileNames = extractPattern((char*)content, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
+    // stringList *additionalFileNames = extractPattern((char*)content, "(\"|\'){1}[a-zA-Z0-9_-]+\\.(js|png|jpg|jpeg|css)[0-9?_]*(\"|\'){1}");
+    stringList *additionalFileNames = NULL;
 
     if (additionalFileNames == NULL) {
         free(response);
@@ -252,7 +224,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    stringList *urls = extractPattern((char*)content, "https?://[a-zA-Z0-9./?=_-]+");
+    stringList *urls = extractPattern("DEBUG", "https?://[a-zA-Z0-9./?=_-]+");
 
     // TODO: make readable and remove magic values.
 
