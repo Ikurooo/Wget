@@ -68,26 +68,6 @@ long parsePort(const char *portStr) {
 }
 
 /**
- * Takes a standard response and extracts the content as a dynamically allocated string.
- * @param response the response from the server
- * @implNote this function can only handle headers up to 64KB on some systems
- * @return a dynamically allocated string containing the content
- */
-size_t extractContent(uint8_t *response, ssize_t messageLength, uint8_t **content) {
-    char* position = strstr((char*)response, "\r\n\r\n");
-
-    if (position == NULL) {
-        *content = NULL;
-        return 0;
-    }
-
-    size_t headerLength = position - (char*)response + strlen("\r\n\r\n");
-
-    *content = response + headerLength;
-    return messageLength - headerLength;
-}
-
-/**
  * @brief Validates the response.
  * @param protocol the protocol
  * @param status the status
@@ -143,12 +123,12 @@ int validateResponse(uint8_t *response) {
  * @param serverSocket the serverSocket
  * @return a dynamically allocated string with the entire response
  */
-ssize_t receiveHeaderAndWriteToFile(FILE *file, int serverSocket) {
+int receiveHeaderAndWriteToFile(FILE *file, int serverSocket) {
     ssize_t headerSize = 0;
     ssize_t bytesRead;
     uint8_t buffer[BUFFER_SIZE];
     uint8_t *header = NULL;
-    char *headerEnd;
+    char *headerEnd = NULL;
 
     // Read until header is received (\r\n\r\n)
     while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE, 0)) > 0) {
@@ -170,29 +150,29 @@ ssize_t receiveHeaderAndWriteToFile(FILE *file, int serverSocket) {
         }
     }
 
-    // Validate the header
-    if (validateResponse(header) != 0) {
+    int responseCode = validateResponse(header);
+    if (responseCode != 0) {
         free(header);
-        return -1; // Invalid header
+        return responseCode;
     }
 
-    // Write everything after the header to the provided file
+    // Write the parts of the file that might have been saved to the header array to the output file.
     if (headerEnd != NULL) {
         ssize_t remainingSize = headerSize - (headerEnd - (char*)header) - 4; // Exclude the "\r\n\r\n" from headerSize
         fwrite(headerEnd + 4, 1, remainingSize, file);
     }
+    free(header);
 
     while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE, 0)) > 0) {
         fwrite(buffer, 1, bytesRead, file);
     }
 
-    free(header);
-
     if (bytesRead < 0) {
-        return -1; // Error reading from socket
+        fprintf(stderr, "No content present\n");
+        return -1;
     }
 
-    return headerSize;
+    return 0;
 }
 
 /**
@@ -330,4 +310,35 @@ char *catFileNameToDir(char *fileName, char *dirName) {
     fprintf(stderr, "PATH:%s\n", path);
 
     return path;
+}
+
+FILE *parseOutputFile(bool fileSet, bool dirSet, char* path, char* file) {
+    char *fullPath = NULL;
+
+    if (fileSet == true) {
+        if (validateFile(path) == -1) {
+            fprintf(stderr, "An error occurred while parsing the file.\n");
+            return NULL;
+        }
+        fullPath = strdup(path);
+    }
+
+    if (dirSet == true) {
+        if (createDir(path) == -1) {
+            fprintf(stderr, "An error occurred while creating the directory.\n");
+            return NULL;
+        }
+
+        fullPath = catFileNameToDir(file, path);
+
+        if (fullPath == NULL) {
+            fprintf(stderr, "An error occurred while concatenating the directory.\n");
+            return NULL;
+        }
+    }
+
+    FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(fullPath, "wb");
+    free(fullPath);
+
+    return outfile;
 }

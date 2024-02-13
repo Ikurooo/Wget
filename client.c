@@ -161,35 +161,7 @@ int main(int argc, char *argv[]) {
     }
     free(request);
 
-    char *fullPath = NULL;
-
-    if (fileSet == true) {
-        if (validateFile(path) == -1) {
-            freeUri(&uri);
-            fprintf(stderr, "An error occurred while parsing the file.\n");
-            exit(EXIT_FAILURE);
-        }
-        fullPath = strdup(path);
-    }
-
-    if (dirSet == true) {
-        if (createDir(path) == -1) {
-            freeUri(&uri);
-            fprintf(stderr, "An error occurred while creating the directory.\n");
-            exit(EXIT_FAILURE);
-        }
-
-        fullPath = catFileNameToDir(uri.file, path);
-
-        if (fullPath == NULL) {
-            freeUri(&uri);
-            fprintf(stderr, "An error occurred while concatenating the directory.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    FILE *outfile = (dirSet == false && fileSet == false) ? stdout : fopen(fullPath, "wb");
-    free(fullPath);
+    FILE *outfile = parseOutputFile(fileSet, dirSet, path, uri.file);
 
     if (outfile == NULL)  {
         freeUri(&uri);
@@ -197,19 +169,15 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    uint8_t *response = NULL;
-    ssize_t responseLength = receiveHeaderAndWriteToFile(outfile, clientSocket);
-    close(clientSocket);
-
-    if (responseLength == -1) {
+    if (receiveHeaderAndWriteToFile(outfile, clientSocket) == -1) {
         freeUri(&uri);
-        fprintf(stderr, "No response present.\n");
+        close(clientSocket);
         exit(EXIT_FAILURE);
     }
+    close(clientSocket);
 
     // Exit program if we don't want to get additional files.
     if (getAdditionalFiles != true) {
-        free(response);
         freeUri(&uri);
         exit(EXIT_SUCCESS);
     }
@@ -218,7 +186,6 @@ int main(int argc, char *argv[]) {
     stringList *additionalFileNames = NULL;
 
     if (additionalFileNames == NULL) {
-        free(response);
         freeUri(&uri);
         fprintf(stderr, "An error occurred while extracting additional files.\n");
         exit(EXIT_FAILURE);
@@ -267,14 +234,12 @@ int main(int argc, char *argv[]) {
     }
 
     if (urls == NULL) {
-        free(response);
         freeUri(&uri);
         fprintf(stderr, "An error occurred while extracting urls.\n");
         exit(EXIT_FAILURE);
     }
 
     freeUri(&uri);
-    free(response);
     freeStringList(urls);
     exit(EXIT_SUCCESS);
 }
@@ -282,4 +247,3 @@ int main(int argc, char *argv[]) {
 // TODO: implement gzip.
 // TODO: make multi-threaded with sync through unnamed semaphores.
 // TODO: implement function to get current working directory.
-// TODO: refactor receive response function to instantly write to a file.
