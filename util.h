@@ -70,7 +70,7 @@ long parsePort(const char *portStr) {
  * @param status the status
  * @return 0 if everything went successful
  */
-int validateResponse(uint8_t *response) {
+int validateResponse(uint8_t *response, bool *couldContainExtraFiles) {
 
     if (response == NULL) {
         return -1;
@@ -92,6 +92,7 @@ int validateResponse(uint8_t *response) {
     char *protocol = strtok(responseCopy, " ");
     char *status = strtok(NULL, " ");
     char *misc = strtok(NULL, "\r\n");
+    char *restOfResponse = strtok(NULL, "");
 
     if (protocol == NULL || status == NULL || misc == NULL) {
         fprintf(stderr, "ERROR parsing first line of client socket as file.\n");
@@ -111,6 +112,23 @@ int validateResponse(uint8_t *response) {
         return 3;
     }
 
+    char *contentStart = strstr(restOfResponse, "Content-Type:");
+    fprintf(stderr, "Content-Type start: %s\n", contentStart);
+
+    if (contentStart == NULL) {
+        free(responseCopy);
+        return 0;
+    }
+
+    contentStart += strlen("Content-Type: ");
+
+    if (strstr(contentStart, "text/javascript") != NULL ||
+        strstr(contentStart, "text/html") != NULL ||
+        strstr(contentStart, "text/css") != NULL) {
+
+        *couldContainExtraFiles = true;
+    }
+
     free(responseCopy);
     return 0;
 }
@@ -120,7 +138,7 @@ int validateResponse(uint8_t *response) {
  * @param serverSocket the serverSocket
  * @return a dynamically allocated string with the entire response
  */
-int receiveHeaderAndWriteToFile(FILE *file, SSL *ssl) {
+int receiveHeaderAndWriteToFile(FILE *file, SSL *ssl, bool *couldContainExtraFiles) {
     ssize_t headerSize = 0;
     ssize_t bytesRead;
     uint8_t buffer[BUFFER_SIZE];
@@ -147,11 +165,16 @@ int receiveHeaderAndWriteToFile(FILE *file, SSL *ssl) {
         }
     }
 
-    int responseCode = validateResponse(header);
+    int responseCode = validateResponse(header, couldContainExtraFiles);
     if (responseCode != 0) {
         free(header);
         return responseCode;
     }
+
+    int length = headerEnd - (char*)header;
+
+    // Print the substring up to headerEnd
+    printf("%.*s\n", length, header);
 
     // Write the parts of the file that might have been saved to the header array to the output file.
     if (headerEnd != NULL) {

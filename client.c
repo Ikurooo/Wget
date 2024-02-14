@@ -159,13 +159,17 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (receiveHeaderAndWriteToFile(outfile, ssl) == -1) {
+    bool couldContainExtraFiles = false;
+    if (receiveHeaderAndWriteToFile(outfile, ssl, &couldContainExtraFiles) == -1) {
         freeUri(&uri);
         SSL_free(ssl);
         SSL_CTX_free(sslContext);
         close(clientSocket);
         exit(EXIT_FAILURE);
     }
+
+    // TODO: remove debug line
+    fprintf(stderr, "May contain extra files: %d\n", couldContainExtraFiles);
 
     SSL_free(ssl);
     SSL_CTX_free(sslContext);
