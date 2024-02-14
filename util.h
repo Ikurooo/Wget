@@ -2,6 +2,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <netdb.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -118,7 +120,7 @@ int validateResponse(uint8_t *response) {
  * @param serverSocket the serverSocket
  * @return a dynamically allocated string with the entire response
  */
-int receiveHeaderAndWriteToFile(FILE *file, int serverSocket) {
+int receiveHeaderAndWriteToFile(FILE *file, SSL *ssl) {
     ssize_t headerSize = 0;
     ssize_t bytesRead;
     uint8_t buffer[BUFFER_SIZE];
@@ -126,7 +128,7 @@ int receiveHeaderAndWriteToFile(FILE *file, int serverSocket) {
     char *headerEnd = NULL;
 
     // Read until header is received (\r\n\r\n)
-    while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+    while ((bytesRead = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
         uint8_t *temp = realloc(header, headerSize + bytesRead + 1); // +1 for null-terminator
         if (temp == NULL) {
             free(header);
@@ -158,7 +160,7 @@ int receiveHeaderAndWriteToFile(FILE *file, int serverSocket) {
     }
     free(header);
 
-    while ((bytesRead = recv(serverSocket, buffer, BUFFER_SIZE, 0)) > 0) {
+    while ((bytesRead = SSL_read(ssl, buffer, sizeof(buffer))) > 0) {
         fwrite(buffer, 1, bytesRead, file);
     }
 

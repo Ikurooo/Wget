@@ -18,7 +18,7 @@
  * @return
  */
 int main(int argc, char *argv[]) {
-    char *portStr = "80";
+    char *portStr = "443";
     char *url = NULL;
     char *path = NULL;
     URI uri;
@@ -112,18 +112,37 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    // Initialize OpenSSL
+    SSL_library_init();
+    SSL_CTX *sslContext = SSL_CTX_new(SSLv23_client_method());
+    SSL *ssl = SSL_new(sslContext);
+    SSL_set_fd(ssl, clientSocket);
+
+    // Perform SSL/TLS handshake
+    if (SSL_connect(ssl) != 1) {
+        fprintf(stderr, "SSL/TLS handshake failed.\n");
+        SSL_free(ssl);
+        SSL_CTX_free(sslContext);
+        close(clientSocket);
+        exit(EXIT_FAILURE);
+    }
+
     char *request = NULL;
 
     if (asprintf(&request, "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", uri.file, uri.host) == -1) {
+        SSL_free(ssl);
+        SSL_CTX_free(sslContext);
         close(clientSocket);
         fprintf(stderr, "Error creating HTTP request");
         exit(EXIT_FAILURE);
     }
 
     size_t requestLength = strlen(request);
-    ssize_t bytesSent = send(clientSocket, request, requestLength, 0);
+    ssize_t bytesSent = SSL_write(ssl, request, (int)strlen(request));
 
     if (bytesSent == -1 || bytesSent < requestLength) {
+        SSL_free(ssl);
+        SSL_CTX_free(sslContext);
         close(clientSocket);
         fprintf(stderr, "Error sending HTTP request");
         exit(EXIT_FAILURE);
@@ -133,17 +152,23 @@ int main(int argc, char *argv[]) {
     FILE *outfile = parseOutputFile(fileSet, dirSet, path, uri.file);
 
     if (outfile == NULL)  {
+        SSL_free(ssl);
+        SSL_CTX_free(sslContext);
         freeUri(&uri);
         fprintf(stderr, "ERROR opening output file\n");
         exit(EXIT_FAILURE);
     }
 
-    if (receiveHeaderAndWriteToFile(outfile, clientSocket) == -1) {
+    if (receiveHeaderAndWriteToFile(outfile, ssl) == -1) {
         freeUri(&uri);
+        SSL_free(ssl);
+        SSL_CTX_free(sslContext);
         close(clientSocket);
         exit(EXIT_FAILURE);
     }
 
+    SSL_free(ssl);
+    SSL_CTX_free(sslContext);
     close(clientSocket);
     freeUri(&uri);
     exit(EXIT_SUCCESS);
