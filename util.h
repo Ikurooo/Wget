@@ -113,7 +113,6 @@ int validateResponse(uint8_t *response, bool *couldContainExtraFiles) {
     }
 
     char *contentStart = strstr(restOfResponse, "Content-Type:");
-    fprintf(stderr, "Content-Type start: %s\n", contentStart);
 
     if (contentStart == NULL) {
         free(responseCopy);
