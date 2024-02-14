@@ -31,10 +31,10 @@ use make to build the app
 - Download files
 - Specify output directory or output file; if left unspecified it will get printed to the terminal
 - Handle responses according to HTTP/1.1 standard (yet to implement 302)
-- NOTE: https is as of now NOT securely implemented
+- Now supports HTTPS
 
 ## Limitations
-- HTTP/1.1
+- HTTP(S)/1.1
 - IPv4
 
 ## Meta
